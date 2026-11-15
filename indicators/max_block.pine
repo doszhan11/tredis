@@ -1,0 +1,229 @@
+//@version=6
+// MAX block (SMC VP clone v1.4 негізінде) - OB блоктарына "OB Genesis" жазуы қосылды
+indicator("MAX block", "MAX block", overlay = true, max_boxes_count = 500)
+
+// ───────── MAIN
+g0 = "MAIN"
+backtest     = input.bool(false, "Backtest mode", group = g0, tooltip = "Қосулы: бүкіл тарих есептеледі")
+useStart     = input.bool(false, "Manual set start date of work indicator", group = g0)
+startTime    = input.time(timestamp("2025-03-10T03:00:00"), "Start date", group = g0)
+lookbackDays = input.int(60, "Default window (days from now)", minval = 1, maxval = 3650, group = g0,
+                 tooltip = "Manual start өшірулі болса, есептеу қазіргі уақыттан осынша күн бұрын басталады")
+
+// ───────── ORDER BLOCKS
+g1 = "ORDER BLOCKS"
+plotOB      = input.bool(true, "Plot OB", group = g1)
+bullObCol   = input.color(color.new(#9E9E9E, 50), "Bullish OB Color", inline = "obc", group = g1)
+bearObCol   = input.color(color.new(#9E9E9E, 50), "Bearish OB Color", inline = "obc", group = g1)
+obStyleIn   = input.string("sol", "OB Box Border Style", options = ["sol", "dsh", "dot"], group = g1)
+obBorderTr  = input.int(80, "OB Border Box Transparency", minval = 0, maxval = 100, group = g1)
+obMax       = input.int(50, "Maximum OB Box Displayed", minval = 1, maxval = 300, group = g1)
+obCustomMit = input.bool(false, "Custom Color Mitigated OB", inline = "obm", group = g1)
+obMitCol    = input.color(color.new(#9E9E9E, 85), "Mitigated OB Color", inline = "obm", group = g1)
+obMedian    = input.bool(false, "Invalidate OB only break median", group = g1)
+obLabelOn   = input.bool(true, "Show OB label (блок ішіндегі жазу)", group = g1)
+obLabelText = input.string("OB Genesis", "OB label text", group = g1)
+obLabelSize = input.string("small", "OB label size", options = ["tiny", "small", "normal", "large"], group = g1)
+obLabelCol  = input.color(color.new(#424242, 0), "OB label color", group = g1)
+
+// ───────── FAIR VALUE GAPS
+g2 = "FAIR VALUE GAPS"
+plotFVG      = input.bool(true, "Plot FVG", group = g2)
+bullFvgCol   = input.color(color.new(#FFEB3B, 35), "Bullish FVG Color", inline = "fc", group = g2)
+bearFvgCol   = input.color(color.new(#2962FF, 45), "Bearish FVG Color", inline = "fc", group = g2)
+fvgStyleIn   = input.string("sol", "FVG Box Border Style", options = ["sol", "dsh", "dot"], group = g2)
+fvgBorderTr  = input.int(80, "FVG Border Box Transparency", minval = 0, maxval = 100, group = g2)
+fvgMax       = input.int(50, "Maximum FVG Box Displayed", minval = 1, maxval = 300, group = g2)
+fvgCustomMit = input.bool(false, "Custom Color Mitigated FVG", inline = "fm", group = g2)
+fvgMitCol    = input.color(color.new(#9E9E9E, 85), "Mitigated FVG Color", inline = "fm", group = g2)
+fvgResize    = input.bool(false, "Resize High FVG after mitigation", group = g2)
+fvgLevel     = input.float(1.0, "Level of box mitigation FVG %", minval = 0, maxval = 100, step = 1, group = g2)
+fvgNoCont    = input.bool(true, "Not continue box FVG", group = g2)
+
+// ───────── ALGORITHM
+gA = "ALGORITHM"
+obLookback = input.int(10, "OB lookback (mother bar)", minval = 1, maxval = 50, group = gA)
+mergeWin   = input.int(2, "Merge window (bars)", minval = 0, maxval = 10, group = gA)
+borderW    = input.int(1, "Border Width (0 = жоқ)", minval = 0, maxval = 4, group = gA)
+
+// ───────── TYPES & STATE
+f_style(string s) => s == "dsh" ? line.style_dashed : s == "dot" ? line.style_dotted : line.style_solid
+
+f_size(string s) => s == "tiny" ? size.tiny : s == "normal" ? size.normal : s == "large" ? size.large : size.small
+
+type Zone
+    box   bx
+    float top
+    float bot
+    bool  bull
+
+var array<Zone> obs  = array.new<Zone>()   // тек белсенді OB-лар
+var array<Zone> fvgs = array.new<Zone>()   // тек белсенді FVG-лар
+var int lastBullRun  = -100                // соңғы сәтті bullish импульстің гэп-шамы
+var int lastBearRun  = -100
+
+f_limit(array<Zone> arr, int maxN) =>
+    while arr.size() > maxN
+        Zone z = arr.shift()
+        z.bx.delete()
+    arr.size()
+
+// Ана шам: B1 (offset 2) және одан артқа lookback шам. Табылмаса -1.
+f_mother(bool bull, int N) =>
+    int k = -1
+    if bull ? low[2] <= low[1] : high[2] >= high[1]
+        k := 2
+    float mxH  = high[2]
+    float mnL  = low[2]
+    float mxH2 = math.max(high[2], high[1])
+    float mnL2 = math.min(low[2], low[1])
+    for j = 3 to 2 + N
+        bool ok = bull ? (low[j] <= mnL2 and high[j] >= mxH) : (high[j] >= mxH2 and low[j] <= mnL)
+        if ok
+            k := j
+        mxH  := math.max(mxH, high[j])
+        mnL  := math.min(mnL, low[j])
+        mxH2 := math.max(mxH2, high[j])
+        mnL2 := math.min(mnL2, low[j])
+    k
+
+// OB шамын таңдау: ана шам гэп бермесе, одан ары қарай іздейді
+f_pick(bool bull, int N) =>
+    int k   = f_mother(bull, N)
+    int res = -1
+    if k > 0
+        bool ok = bull ? high[k] < low : low[k] > high
+        if ok
+            res := k
+        else if k < 2 + N
+            float mx = high[1]
+            float mn = low[1]
+            for j = 2 to k
+                mx := math.max(mx, high[j])
+                mn := math.min(mn, low[j])
+            float best = na
+            for j = k + 1 to 2 + N
+                bool run = bull ? low[j] <= mn : high[j] >= mx
+                bool flt = bull ? high[j] < low : low[j] > high
+                if run and flt
+                    if na(best) or (bull ? high[j] > best : low[j] < best)
+                        best := bull ? high[j] : low[j]
+                        res  := j
+                mx := math.max(mx, high[j])
+                mn := math.min(mn, low[j])
+    res
+
+f_touchesFvg(bool bull, float t, float b) =>
+    bool res = false
+    for z in fvgs
+        if z.bull == bull and t >= z.bot and b <= z.top
+            res := true
+            break
+    res
+
+f_updateOB() =>
+    if obs.size() > 0
+        for i = obs.size() - 1 to 0
+            Zone z = obs.get(i)
+            float mid = (z.top + z.bot) / 2
+            bool mit = z.bull ? (obMedian ? low < mid : low <= z.top) : (obMedian ? high > mid : high >= z.bot)
+            if mit
+                obs.remove(i)
+                z.bx.set_right(bar_index)
+                if obCustomMit
+                    z.bx.set_bgcolor(obMitCol)
+                    z.bx.set_border_color(color.new(obMitCol, obBorderTr))
+            else
+                z.bx.set_right(bar_index + 1)
+
+f_updateFVG() =>
+    if fvgs.size() > 0
+        for i = fvgs.size() - 1 to 0
+            Zone z = fvgs.get(i)
+            bool mit = false
+            if z.bull
+                if fvgResize
+                    if low < z.top
+                        z.top := math.max(low, z.bot)
+                        z.bx.set_top(z.top)
+                    mit := low <= z.bot
+                else
+                    mit := low <= z.top - (z.top - z.bot) * fvgLevel / 100
+            else
+                if fvgResize
+                    if high > z.bot
+                        z.bot := math.min(high, z.top)
+                        z.bx.set_bottom(z.bot)
+                    mit := high >= z.top
+                else
+                    mit := high >= z.bot + (z.top - z.bot) * fvgLevel / 100
+            if mit
+                fvgs.remove(i)
+                if not fvgNoCont
+                    z.bx.set_right(bar_index)
+                if fvgCustomMit and plotFVG
+                    z.bx.set_bgcolor(fvgMitCol)
+                    z.bx.set_border_color(color.new(fvgMitCol, fvgBorderTr))
+            else if not fvgNoCont
+                z.bx.set_right(bar_index + 1)
+
+f_newOB(bool bull, int k, float t, float b) =>
+    if plotOB
+        color c = bull ? bullObCol : bearObCol
+        bx = box.new(bar_index - k, t, bar_index + 1, b, border_color = color.new(c, obBorderTr),
+             border_width = borderW, border_style = f_style(obStyleIn), bgcolor = c,
+             text = obLabelOn ? obLabelText : "", text_size = f_size(obLabelSize), text_color = obLabelCol,
+             text_halign = text.align_left, text_valign = text.align_top)
+        obs.push(Zone.new(bx, t, b, bull))
+        f_limit(obs, obMax)
+
+f_newFvg(bool bull, int k, float t, float b) =>
+    color c = bull ? bullFvgCol : bearFvgCol
+    int   r = fvgNoCont ? bar_index : bar_index + 1
+    fb = box.new(bar_index - k, t, r, b,
+         border_color = plotFVG ? color.new(c, fvgBorderTr) : color(na),
+         border_width = borderW, border_style = f_style(fvgStyleIn),
+         bgcolor = plotFVG ? c : color(na))
+    fvgs.push(Zone.new(fb, t, b, bull))
+    f_limit(fvgs, fvgMax)
+
+// ───────── CALCULATION WINDOW
+int calcStart = backtest ? 0 : useStart ? startTime : timenow - lookbackDays * 86400000
+active  = time >= calcStart
+
+// ───────── MAIN
+bullGap = low > high[2]
+bearGap = high < low[2]
+
+if barstate.isconfirmed and bar_index > obLookback + 3
+    f_updateOB()
+    f_updateFVG()
+
+    // ── BULLISH
+    if active and bullGap
+        if bar_index - lastBullRun <= mergeWin
+            // сәтті импульстің жалғасы: жаңа OB жоқ
+            lastBullRun := bar_index
+        else
+            int k = f_pick(true, obLookback)
+            if k > 0
+                float t = high[k]
+                float b = low[k]
+                if not f_touchesFvg(true, t, b)
+                    f_newOB(true, k, t, b)
+                    f_newFvg(true, k, low, t)
+                    lastBullRun := bar_index
+
+    // ── BEARISH
+    if active and bearGap
+        if bar_index - lastBearRun <= mergeWin
+            lastBearRun := bar_index
+        else
+            int k = f_pick(false, obLookback)
+            if k > 0
+                float t = high[k]
+                float b = low[k]
+                if not f_touchesFvg(false, t, b)
+                    f_newOB(false, k, t, b)
+                    f_newFvg(false, k, b, high)
+                    lastBearRun := bar_index

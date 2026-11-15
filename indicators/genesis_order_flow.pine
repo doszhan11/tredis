@@ -1,0 +1,623 @@
+//@version=6
+indicator("GENESIS ORDER FLOW", overlay=true, max_boxes_count=500, max_lines_count=500, max_labels_count=500, max_bars_back=5000)
+
+// ============================================================================
+// GENESIS ORDER FLOW v50 — alert хабарламалары JSON (Telegram бот үшін)
+// ============================================================================
+
+// ---------------- БАПТАУ ----------------
+gTF = "Таймфреймдер"
+sweepTFsel   = input.string("Chart", "Sweep таймфрейм", options=["Chart", "1", "3", "5", "15", "30", "60", "240"], group=gTF, tooltip="Chart = графиктің өз таймфреймі")
+slonTFsel    = input.string("Chart", "MSS таймфрейм", options=["Chart", "1", "3", "5", "15", "30", "60", "240"], group=gTF, tooltip="Графиктің таймфреймімен бірдей болуы керек")
+
+gLogic = "Логика"
+fracN          = input.int(1, "Фрактал күші (екі жағындағы свеча саны)", minval=1, maxval=5, group=gLogic)
+maxChains      = input.int(5, "Бір бағытта неше белсенді тізбек", minval=1, maxval=10, group=gLogic)
+maxFracAge     = input.int(500, "Деңгейлерді сақтау мерзімі (свеча)", minval=20, maxval=5000, group=gLogic)
+raidLineMax    = input.int(40, "Raid сызығының ең үлкен ұзындығы (свеча)", minval=5, maxval=500, group=gLogic)
+
+gView = "Көрініс"
+showFractals   = input.bool(true, "Фракталдарды көрсету", group=gView)
+showPoints     = input.bool(true, "Маңызды нүктелерді көрсету", group=gView)
+maxZones       = input.int(25, "Неше MSS сақталсын (тарих)", minval=1, maxval=50, group=gView)
+textSizeStr    = input.string("Кіші", "Sweep / Raid / MSS жазу өлшемі", options=["Кішкентай", "Кіші", "Орташа", "Үлкен"], group=gView)
+labelOffMult   = input.float(0.15, "Жазудың сызықтан ығысуы (ATR еселігі)", minval=0.02, maxval=2.0, step=0.02, group=gView)
+raidLabelBelow = input.bool(true, "Raid жазуы сызықтың астында", group=gView)
+
+gFib = "Фибоначчи"
+showFibo       = input.bool(true, "Фибоначчиді көрсету", group=gFib)
+fibExtend      = input.int(3, "Фибо MSS свечасынан кейін созылуы (свеча)", minval=0, maxval=50, group=gFib)
+showFibFill    = input.bool(true, "Фибо фонын көрсету", group=gFib)
+fibFillAlpha   = input.int(84, "Фибо фонының мөлдірлігі", minval=50, maxval=98, group=gFib)
+showYellow     = input.bool(true, "0.5-0.618 сары жолақ", group=gFib)
+fibTxtSizeStr  = input.string("Кіші", "Фибо жазуларының өлшемі", options=["Кішкентай", "Кіші", "Орташа"], group=gFib)
+
+gCol = "Түстер"
+colHiFrac      = input.color(color.new(color.red, 0), "Жоғарғы фрактал ▼", group=gCol)
+colLoFrac      = input.color(color.new(color.green, 0), "Төменгі фрактал ▲", group=gCol)
+colStruct      = input.color(color.black, "Sweep / Raid / MSS (расталған)", group=gCol)
+colPlain       = input.color(color.new(color.gray, 25), "Sweep / Raid (белсенді, әлі MSS жоқ)", group=gCol)
+pointColor     = input.color(color.new(#FF6D00, 0), "Нүктелер", group=gCol)
+colRiskBase    = input.color(#E53935, "Stop-Entry аймағы", group=gCol)
+colTgtBase     = input.color(#43A047, "TP аймағы", group=gCol)
+colYellowBase  = input.color(#FFD600, "Сары жолақ", group=gCol)
+
+sweepTF = sweepTFsel == "Chart" ? timeframe.period : sweepTFsel
+slonTF  = slonTFsel  == "Chart" ? timeframe.period : slonTFsel
+
+txtSize    = textSizeStr == "Кішкентай" ? size.tiny : textSizeStr == "Кіші" ? size.small : textSizeStr == "Үлкен" ? size.large : size.normal
+fibTxtSize = fibTxtSizeStr == "Кішкентай" ? size.tiny : fibTxtSizeStr == "Орташа" ? size.normal : size.small
+colNone = color.new(color.white, 100)
+riskFill   = color.new(colRiskBase, fibFillAlpha)
+tgtFill    = color.new(colTgtBase, fibFillAlpha)
+yellowFill = color.new(colYellowBase, 65)
+riskLine   = color.new(colRiskBase, 10)
+tgtLine    = color.new(colTgtBase, 10)
+
+atrOff = ta.atr(14) * labelOffMult
+
+// ============================================================================
+// ТИПТЕР
+// ============================================================================
+type Chain
+    bool  active = false
+    int   dir = 0
+    float refLvl = na
+    int   refBar = na
+    int   startEnd = na
+    float sweptLvl = na
+    int   sweptBar = na
+    int   lnX1 = na
+    bool  isRaid = false
+    line  ln = na
+    label lb = na
+
+type Pend
+    bool  on = false
+    float lvl = na
+    int   lvlBar = na
+    float ext = na
+    int   extBar = na
+
+// ============================================================================
+// КӨМЕКШІ
+// ============================================================================
+f_tfLabel(tf) =>
+    n = str.tonumber(tf)
+    na(n) ? tf : (n >= 60 and n % 60 == 0 ? str.tostring(n / 60, "#") + "Ч" : tf + "м")
+
+f_mid(int a, int b) => int(math.round((a + b) / 2.0))
+
+f_point(int x, float y, string sym, color c) =>
+    label.new(x, y, sym, style=label.style_none, textcolor=c, size=size.tiny)
+
+f_num(float v) => str.tostring(v, "#.#####")
+
+// JSON alert: бот осы форматты оқиды
+f_alertJson(string ev, string kind, string dirTxt, float lvl, float stop, float entry, float t1, float t2, float t3, float t4, float mssLvl) =>
+    "{\"src\":\"GENESIS\",\"event\":\"" + ev + "\",\"kind\":\"" + kind + "\",\"symbol\":\"" + syminfo.ticker + "\"" +
+     ",\"sweep_tf\":\"" + sweepTF + "\",\"mss_tf\":\"" + slonTF + "\",\"dir\":\"" + dirTxt + "\"" +
+     ",\"level\":" + f_num(lvl) + ",\"stop\":" + f_num(stop) +
+     (na(entry) ? "" : ",\"entry\":" + f_num(entry) + ",\"tp1\":" + f_num(t1) + ",\"tp2\":" + f_num(t2) + ",\"tp3\":" + f_num(t3) + ",\"tp4\":" + f_num(t4) + ",\"mss_level\":" + f_num(mssLvl)) +
+     ",\"time\":\"" + str.format_time(time, "yyyy-MM-dd HH:mm", "Asia/Almaty") + "\"}"
+
+f_isHiFrac(int n) =>
+    bool ok = bar_index >= 2 * n
+    if ok
+        for k = 1 to n
+            if high[n - k] >= high[n] or high[n + k] >= high[n]
+                ok := false
+    ok
+
+f_isLoFrac(int n) =>
+    bool ok = bar_index >= 2 * n
+    if ok
+        for k = 1 to n
+            if low[n - k] <= low[n] or low[n + k] <= low[n]
+                ok := false
+    ok
+
+// ============================================================================
+// ЕСКЕРТУ: TF баптауы
+// ============================================================================
+chartTfOk = timeframe.period == slonTF
+tfOrderOk = timeframe.in_seconds(sweepTF) >= timeframe.in_seconds(slonTF)
+
+var label warnLbl = na
+if barstate.islast
+    label.delete(warnLbl)
+    warnLbl := na
+    if not chartTfOk or not tfOrderOk
+        warnTxt = not chartTfOk ? "⚠️ Chart TF-ті " + f_tfLabel(slonTF) + " қойыңыз немесе MSS TF = Chart!" : "⚠️ Sweep TF MSS TF-тен кіші болмауы керек!"
+        warnLbl := label.new(bar_index, high + (high - low) * 3, warnTxt,
+             color=color.orange, style=label.style_label_down, textcolor=color.white, size=size.normal)
+
+// ============================================================================
+// MSS TF (= chart) ФРАКТАЛДАРЫ
+// ============================================================================
+hiFrac = f_isHiFrac(fracN)
+loFrac = f_isLoFrac(fracN)
+
+plotshape(showFractals and hiFrac, title="Фрактал ▼", style=shape.triangledown, location=location.abovebar, color=colHiFrac, offset=-fracN, size=size.tiny)
+plotshape(showFractals and loFrac, title="Фрактал ▲", style=shape.triangleup, location=location.belowbar, color=colLoFrac, offset=-fracN, size=size.tiny)
+
+var int[]   mLoBar  = array.new_int()
+var float[] mLoWick = array.new_float()
+var int[]   mHiBar  = array.new_int()
+var float[] mHiWick = array.new_float()
+
+if barstate.isconfirmed
+    if loFrac
+        mLoBar.push(bar_index - fracN)
+        mLoWick.push(low[fracN])
+        if mLoBar.size() > 500
+            mLoBar.shift()
+            mLoWick.shift()
+    if hiFrac
+        mHiBar.push(bar_index - fracN)
+        mHiWick.push(high[fracN])
+        if mHiBar.size() > 500
+            mHiBar.shift()
+            mHiWick.shift()
+
+f_findFrac(bool needLow, int beforeBar) =>
+    float lvl = na
+    int pb = na
+    if needLow
+        if mLoBar.size() > 0
+            for i = mLoBar.size() - 1 to 0
+                if mLoBar.get(i) < beforeBar
+                    lvl := mLoWick.get(i)
+                    pb := mLoBar.get(i)
+                    break
+    else
+        if mHiBar.size() > 0
+            for i = mHiBar.size() - 1 to 0
+                if mHiBar.get(i) < beforeBar
+                    lvl := mHiWick.get(i)
+                    pb := mHiBar.get(i)
+                    break
+    [lvl, pb]
+
+// ============================================================================
+// SWEEP TF СВЕЧАЛАРЫН chart свечаларынан жинау
+// ============================================================================
+newSw = timeframe.change(sweepTF)
+
+var float aggO = na
+var float aggH = na
+var float aggL = na
+var int   aggHBar = na
+var int   aggLBar = na
+var bool  aggDone = true
+
+bool  doProc = false
+float pO = na
+float pH = na
+float pL = na
+float pC = na
+int   pHBar = na
+int   pLBar = na
+int   pEnd = na
+
+if newSw or na(aggO)
+    if not aggDone and not na(aggO)
+        doProc := true
+        pO := aggO
+        pH := aggH
+        pL := aggL
+        pC := close[1]
+        pHBar := aggHBar
+        pLBar := aggLBar
+        pEnd := bar_index - 1
+    aggO := open
+    aggH := high
+    aggL := low
+    aggHBar := bar_index
+    aggLBar := bar_index
+    aggDone := false
+else
+    if high > aggH
+        aggH := high
+        aggHBar := bar_index
+    if low < aggL
+        aggL := low
+        aggLBar := bar_index
+
+htfClose = barstate.isconfirmed and time_close == time_close(sweepTF)
+if not doProc and htfClose and not aggDone
+    doProc := true
+    pO := aggO
+    pH := aggH
+    pL := aggL
+    pC := close
+    pHBar := aggHBar
+    pLBar := aggLBar
+    pEnd := bar_index
+    aggDone := true
+
+var float[] hH    = array.new_float()
+var float[] hL    = array.new_float()
+var int[]   hHBar = array.new_int()
+var int[]   hLBar = array.new_int()
+var int     swIdx = 0
+
+var float[] uHiLvl = array.new_float()
+var int[]   uHiBar = array.new_int()
+var int[]   uHiIdx = array.new_int()
+var bool[]  uHiSw  = array.new_bool()
+var bool[]  uHiBd  = array.new_bool()
+var float[] uLoLvl = array.new_float()
+var int[]   uLoBar = array.new_int()
+var int[]   uLoIdx = array.new_int()
+var bool[]  uLoSw  = array.new_bool()
+var bool[]  uLoBd  = array.new_bool()
+var label[] swFracLbls = array.new_label()
+
+// ============================================================================
+// ТІЗБЕКТЕР ЖӘНЕ СЫЗБАЛАР
+// ============================================================================
+var chUps = array.new<Chain>()
+var chDns = array.new<Chain>()
+var Pend pendUp = Pend.new()
+var Pend pendDn = Pend.new()
+
+var line[]  zLines  = array.new_line()
+var label[] zLabels = array.new_label()
+var box[]   zBoxes  = array.new_box()
+var int[]   zCntL   = array.new_int()
+var int[]   zCntLb  = array.new_int()
+var int[]   zCntB   = array.new_int()
+
+f_cleanupZones() =>
+    while zCntL.size() > maxZones
+        nL = zCntL.shift()
+        if nL > 0
+            for k = 1 to nL
+                line.delete(zLines.shift())
+        nLb = zCntLb.shift()
+        if nLb > 0
+            for k = 1 to nLb
+                label.delete(zLabels.shift())
+        nB = zCntB.shift()
+        if nB > 0
+            for k = 1 to nB
+                box.delete(zBoxes.shift())
+
+f_dropChain(Chain c) =>
+    if not na(c.ln)
+        line.delete(c.ln)
+    if not na(c.lb)
+        label.delete(c.lb)
+    c.ln := na
+    c.lb := na
+    c.active := false
+
+f_newChain(int d, bool raid, float lvl, int lvlBar, float ref, int refB, int endBar, float off) =>
+    c = Chain.new()
+    c.active := true
+    c.dir := d
+    c.isRaid := raid
+    c.refLvl := ref
+    c.refBar := refB
+    c.startEnd := endBar
+    c.sweptLvl := lvl
+    c.sweptBar := lvlBar
+    c.lnX1 := raid ? math.max(lvlBar, refB - raidLineMax) : lvlBar
+    c.ln := line.new(c.lnX1, lvl, refB, lvl, color=colPlain, style=line.style_solid, width=1)
+    lx = f_mid(c.lnX1, refB)
+    ly = (raid and raidLabelBelow) ? lvl - off : lvl + off
+    c.lb := label.new(lx, ly, raid ? "Raid" : "Sweep", style=label.style_none, textcolor=colPlain, size=txtSize)
+    c
+
+f_addChain(array<Chain> arr, Chain c) =>
+    arr.push(c)
+    while arr.size() > maxChains
+        f_dropChain(arr.get(0))
+        arr.remove(0)
+    true
+
+f_updateChains(array<Chain> arr, float cC, int endBar) =>
+    if arr.size() > 0
+        for i = arr.size() - 1 to 0
+            c = arr.get(i)
+            if c.startEnd != endBar
+                cancel = c.dir == 1 ? cC > c.sweptLvl : cC < c.sweptLvl
+                if cancel
+                    f_dropChain(c)
+                    arr.remove(i)
+    true
+
+f_fibLevel(int x1, int x2, float y, string txt, color col) =>
+    zLines.push(line.new(x1, y, x2, y, color=col, style=line.style_solid, width=1))
+    zLabels.push(label.new(x1, y, txt, style=label.style_label_left, textcolor=col, color=colNone, size=fibTxtSize))
+    true
+
+// ============================================================================
+// SWEEP TF СВЕЧАСЫ ЖАБЫЛҒАНДА: SWEEP / RAID
+// ============================================================================
+if doProc
+    swIdx += 1
+    hH.push(pH)
+    hL.push(pL)
+    hHBar.push(pHBar)
+    hLBar.push(pLBar)
+    if hH.size() > 30
+        hH.shift()
+        hL.shift()
+        hHBar.shift()
+        hLBar.shift()
+    sz = hH.size()
+    bodyTop = math.max(pO, pC)
+    bodyBot = math.min(pO, pC)
+    isGreen = pC >= pO
+    isRed   = pC <= pO
+
+    while uHiIdx.size() > 0 and swIdx - uHiIdx.first() > maxFracAge
+        uHiLvl.shift()
+        uHiBar.shift()
+        uHiIdx.shift()
+        uHiSw.shift()
+        uHiBd.shift()
+    while uLoIdx.size() > 0 and swIdx - uLoIdx.first() > maxFracAge
+        uLoLvl.shift()
+        uLoBar.shift()
+        uLoIdx.shift()
+        uLoSw.shift()
+        uLoBd.shift()
+
+    float upSwLvl = na
+    int   upSwBar = na
+    int   upSwIdx = na
+    float upBdLvl = na
+    int   upBdBar = na
+    int   upBdIdx = na
+    if uHiLvl.size() > 0
+        for i = uHiLvl.size() - 1 to 0
+            lv = uHiLvl.get(i)
+            ix = uHiIdx.get(i)
+            wasBd = uHiBd.get(i)
+            if pH > lv
+                if bodyTop <= lv
+                    if not wasBd
+                        if not uHiSw.get(i) or chUps.size() == 0
+                            if na(upSwIdx) or ix < upSwIdx
+                                upSwLvl := lv
+                                upSwBar := uHiBar.get(i)
+                                upSwIdx := ix
+                        uHiSw.set(i, true)
+                    uHiBd.set(i, false)
+                else
+                    if wasBd
+                        uHiLvl.remove(i)
+                        uHiBar.remove(i)
+                        uHiIdx.remove(i)
+                        uHiSw.remove(i)
+                        uHiBd.remove(i)
+                    else
+                        if na(upBdIdx) or ix < upBdIdx
+                            upBdLvl := lv
+                            upBdBar := uHiBar.get(i)
+                            upBdIdx := ix
+                        uHiBd.set(i, true)
+            else
+                uHiBd.set(i, false)
+    sweepUp = not na(upSwLvl)
+    bodyUp  = not na(upBdLvl)
+
+    float dnSwLvl = na
+    int   dnSwBar = na
+    int   dnSwIdx = na
+    float dnBdLvl = na
+    int   dnBdBar = na
+    int   dnBdIdx = na
+    if uLoLvl.size() > 0
+        for i = uLoLvl.size() - 1 to 0
+            lv = uLoLvl.get(i)
+            ix = uLoIdx.get(i)
+            wasBd = uLoBd.get(i)
+            if pL < lv
+                if bodyBot >= lv
+                    if not wasBd
+                        if not uLoSw.get(i) or chDns.size() == 0
+                            if na(dnSwIdx) or ix < dnSwIdx
+                                dnSwLvl := lv
+                                dnSwBar := uLoBar.get(i)
+                                dnSwIdx := ix
+                        uLoSw.set(i, true)
+                    uLoBd.set(i, false)
+                else
+                    if wasBd
+                        uLoLvl.remove(i)
+                        uLoBar.remove(i)
+                        uLoIdx.remove(i)
+                        uLoSw.remove(i)
+                        uLoBd.remove(i)
+                    else
+                        if na(dnBdIdx) or ix < dnBdIdx
+                            dnBdLvl := lv
+                            dnBdBar := uLoBar.get(i)
+                            dnBdIdx := ix
+                        uLoBd.set(i, true)
+            else
+                uLoBd.set(i, false)
+    sweepDn = not na(dnSwLvl)
+    bodyDn  = not na(dnBdLvl)
+
+    raidUp = pendUp.on and isRed and pC < pendUp.lvl
+    raidDn = pendDn.on and isGreen and pC > pendDn.lvl
+    if raidUp and sweepUp and upSwLvl <= pendUp.lvl
+        sweepUp := false
+    if raidDn and sweepDn and dnSwLvl >= pendDn.lvl
+        sweepDn := false
+    pendUp.on := false
+    pendDn.on := false
+
+    if sweepUp
+        f_addChain(chUps, f_newChain(1, false, upSwLvl, upSwBar, pH, pHBar, pEnd, atrOff))
+        alert(f_alertJson("SWEEP", "Sweep", "SHORT", upSwLvl, pH, na, na, na, na, na, na), alert.freq_once_per_bar_close)
+    else if raidUp
+        rRef = math.max(pendUp.ext, pH)
+        rRefBar = pH > pendUp.ext ? pHBar : pendUp.extBar
+        f_addChain(chUps, f_newChain(1, true, pendUp.lvl, pendUp.lvlBar, rRef, rRefBar, pEnd, atrOff))
+        alert(f_alertJson("RAID", "Raid", "SHORT", pendUp.lvl, rRef, na, na, na, na, na, na), alert.freq_once_per_bar_close)
+
+    if sweepDn
+        f_addChain(chDns, f_newChain(-1, false, dnSwLvl, dnSwBar, pL, pLBar, pEnd, atrOff))
+        alert(f_alertJson("SWEEP", "Sweep", "LONG", dnSwLvl, pL, na, na, na, na, na, na), alert.freq_once_per_bar_close)
+    else if raidDn
+        rRef = math.min(pendDn.ext, pL)
+        rRefBar = pL < pendDn.ext ? pLBar : pendDn.extBar
+        f_addChain(chDns, f_newChain(-1, true, pendDn.lvl, pendDn.lvlBar, rRef, rRefBar, pEnd, atrOff))
+        alert(f_alertJson("RAID", "Raid", "LONG", pendDn.lvl, rRef, na, na, na, na, na, na), alert.freq_once_per_bar_close)
+
+    if not raidUp and bodyUp and isGreen
+        pendUp.on := true
+        pendUp.lvl := upBdLvl
+        pendUp.lvlBar := upBdBar
+        pendUp.ext := pH
+        pendUp.extBar := pHBar
+    if not raidDn and bodyDn and isRed
+        pendDn.on := true
+        pendDn.lvl := dnBdLvl
+        pendDn.lvlBar := dnBdBar
+        pendDn.ext := pL
+        pendDn.extBar := pLBar
+
+    f_updateChains(chUps, pC, pEnd)
+    f_updateChains(chDns, pC, pEnd)
+
+    n = fracN
+    if sz >= 2 * n + 1
+        piv = sz - 1 - n
+        phv = hH.get(piv)
+        plv = hL.get(piv)
+        bool isHi = true
+        bool isLo = true
+        for k = 1 to n
+            if hH.get(piv - k) >= phv or hH.get(piv + k) >= phv
+                isHi := false
+            if hL.get(piv - k) <= plv or hL.get(piv + k) <= plv
+                isLo := false
+        showSwF = showFractals and sweepTF != timeframe.period
+        if isHi
+            uHiLvl.push(phv)
+            uHiBar.push(hHBar.get(piv))
+            uHiIdx.push(swIdx - n)
+            uHiSw.push(false)
+            uHiBd.push(false)
+            if uHiLvl.size() > 200
+                uHiLvl.shift()
+                uHiBar.shift()
+                uHiIdx.shift()
+                uHiSw.shift()
+                uHiBd.shift()
+            if showSwF
+                swFracLbls.push(label.new(hHBar.get(piv), phv, "▼", style=label.style_label_down, color=colNone, textcolor=colHiFrac, size=size.small))
+        if isLo
+            uLoLvl.push(plv)
+            uLoBar.push(hLBar.get(piv))
+            uLoIdx.push(swIdx - n)
+            uLoSw.push(false)
+            uLoBd.push(false)
+            if uLoLvl.size() > 200
+                uLoLvl.shift()
+                uLoBar.shift()
+                uLoIdx.shift()
+                uLoSw.shift()
+                uLoBd.shift()
+            if showSwF
+                swFracLbls.push(label.new(hLBar.get(piv), plv, "▲", style=label.style_label_up, color=colNone, textcolor=colLoFrac, size=size.small))
+        while swFracLbls.size() > 60
+            label.delete(swFracLbls.shift())
+
+// ============================================================================
+// MSS, әр тізбекке жеке
+// ============================================================================
+f_mss(Chain c) =>
+    string msg = ""
+    if c.active and barstate.isconfirmed and bar_index > c.startEnd
+        [mssLvl, mssFracBar] = f_findFrac(c.dir == 1, c.refBar)
+        if not na(mssLvl)
+            mssOk = c.dir == 1 ? close < mssLvl : close > mssLvl
+            if mssOk
+                level0 = c.refLvl
+                level1 = c.dir == 1 ? math.min(open, close) : math.max(open, close)
+                fibL = c.refBar
+                fibR = bar_index + fibExtend
+                rng  = level1 - level0
+                p05  = level0 + rng * 0.5
+                p618 = level0 + rng * 0.618
+                t1   = level0 + rng * 1.618
+                t2   = level0 + rng * 2.618
+                t3   = level0 + rng * 3.618
+                t4   = level0 + rng * 4.618
+
+                msg := f_alertJson("MSS", c.isRaid ? "Raid" : "Sweep", c.dir == 1 ? "SHORT" : "LONG", c.sweptLvl, level0, level1, t1, t2, t3, t4, mssLvl)
+
+                int nL = 0
+                int nLb = 0
+                int nB = 0
+
+                if showFibo
+                    if showFibFill
+                        zBoxes.push(box.new(left=fibL, top=math.max(level0, level1), right=fibR, bottom=math.min(level0, level1), border_width=0, bgcolor=riskFill))
+                        zBoxes.push(box.new(left=fibL, top=math.max(level1, t4), right=fibR, bottom=math.min(level1, t4), border_width=0, bgcolor=tgtFill))
+                        nB += 2
+                    if showYellow
+                        zBoxes.push(box.new(left=fibL, top=math.max(p05, p618), right=fibR, bottom=math.min(p05, p618), border_width=0, bgcolor=yellowFill))
+                        nB += 1
+                    f_fibLevel(fibL, fibR, level0, "Stop", riskLine)
+                    f_fibLevel(fibL, fibR, level1, "Entry", riskLine)
+                    f_fibLevel(fibL, fibR, t1, "TP 1", tgtLine)
+                    f_fibLevel(fibL, fibR, t2, "TP 2", tgtLine)
+                    f_fibLevel(fibL, fibR, t3, "TP 3", tgtLine)
+                    f_fibLevel(fibL, fibR, t4, "TP 4", tgtLine)
+                    nL += 6
+                    nLb += 6
+
+                zLines.push(line.new(mssFracBar, mssLvl, bar_index, mssLvl, color=colStruct, style=line.style_solid, width=2))
+                zLabels.push(label.new(f_mid(mssFracBar, bar_index), mssLvl + atrOff, "MSS", style=label.style_none, textcolor=colStruct, size=txtSize))
+                nL += 1
+                nLb += 1
+
+                line.set_color(c.ln, colStruct)
+                line.set_width(c.ln, 2)
+                label.set_textcolor(c.lb, colStruct)
+                zLines.push(c.ln)
+                zLabels.push(c.lb)
+                nL += 1
+                nLb += 1
+
+                if showPoints
+                    zLabels.push(f_point(c.sweptBar, c.sweptLvl, "○", color.gray))
+                    zLabels.push(f_point(c.refBar, c.refLvl, "●", pointColor))
+                    zLabels.push(f_point(mssFracBar, mssLvl, "●", pointColor))
+                    zLabels.push(f_point(bar_index, close, "●", pointColor))
+                    nLb += 4
+
+                zCntL.push(nL)
+                zCntLb.push(nLb)
+                zCntB.push(nB)
+                f_cleanupZones()
+
+                c.active := false
+                c.ln := na
+                c.lb := na
+    msg
+
+if chUps.size() > 0
+    for i = chUps.size() - 1 to 0
+        c = chUps.get(i)
+        m = f_mss(c)
+        if m != ""
+            alert(m, alert.freq_once_per_bar_close)
+            chUps.remove(i)
+
+if chDns.size() > 0
+    for i = chDns.size() - 1 to 0
+        c = chDns.get(i)
+        m = f_mss(c)
+        if m != ""
+            alert(m, alert.freq_once_per_bar_close)
+            chDns.remove(i)
