@@ -1,0 +1,208 @@
+//@version=6
+indicator("Genesis Sweep", shorttitle = "Genesis Sweep", overlay = true, max_lines_count = 500, max_labels_count = 500)
+
+// ════════════════════════════════════════════════════════════════
+// SETTINGS
+// ════════════════════════════════════════════════════════════════
+G1 = "SIGNALS"
+showLong    = input.bool(true, "Long", inline = "dir", group = G1)
+showShort   = input.bool(true, "Short", inline = "dir", group = G1)
+frLen       = input.int(3, "Fractal", options = [3, 5, 7], tooltip = "Фрактал неше бардан тұрады: 3 = әр жағынан 1 бар, 5 = әр жағынан 2 бар, 7 = әр жағынан 3 бар", group = G1, display = display.none)
+frMaxAge    = input.int(300, "Фракталдың ең үлкен жасы (бар)", minval = 10, maxval = 5000, tooltip = "Осыдан ескі фракталдар ескерілмейді.", group = G1, display = display.none)
+insideClose = input.bool(true, "2-свеча 1-свечаның ішіне жабылуы керек", group = G1)
+minRR       = input.float(0.0, "Ең аз RR (TP2 бойынша)", minval = 0.0, step = 0.1, tooltip = "0 = сүзгі жоқ. Мысалы 1 = TP2-ге дейінгі қашықтық стоптан кем болмауы керек.", group = G1, display = display.none)
+showFr      = input.bool(false, "Фракталдарды көрсету", group = G1)
+hist        = input.int(20, "Сигнал тарихы (саны)", minval = 1, maxval = 100, group = G1, display = display.none)
+
+G3 = "TIMEFRAMES (график)"
+tfMode = input.string("Таңдалғандар", "Таймфреймдер", options = ["Барлығы", "Таңдалғандар"], tooltip = "Тек графиктегі сызбаларға әсер етеді. Барлығы: кез келген таймфреймде сигнал сызылады. Таңдалғандар: тек төменде белгіленген таймфреймдерде.", group = G3, display = display.none)
+tM1  = input.bool(false, "M1",  inline = "t1", group = G3)
+tM3  = input.bool(false, "M3",  inline = "t1", group = G3)
+tM5  = input.bool(false, "M5",  inline = "t1", group = G3)
+tM10 = input.bool(true,  "M10", inline = "t1", group = G3)
+tM12 = input.bool(true,  "M12", inline = "t2", group = G3)
+tM15 = input.bool(true,  "M15", inline = "t2", group = G3)
+tM20 = input.bool(true,  "M20", inline = "t2", group = G3)
+tM30 = input.bool(true,  "M30", inline = "t2", group = G3)
+tM45 = input.bool(true,  "M45", inline = "t3", group = G3)
+tH1  = input.bool(true,  "H1",  inline = "t3", group = G3)
+tH2  = input.bool(false, "H2",  inline = "t3", group = G3)
+tH3  = input.bool(false, "H3",  inline = "t3", group = G3)
+tH4  = input.bool(true,  "H4",  inline = "t4", group = G3)
+tD1  = input.bool(true,  "D1",  inline = "t4", group = G3)
+tW1  = input.bool(false, "W1",  inline = "t4", group = G3)
+tMN  = input.bool(false, "MN",  inline = "t4", group = G3)
+
+G2 = "STYLE"
+lineC  = input.color(#363A45, "Сызықтар", group = G2)
+longC  = input.color(#089981, "Long", inline = "c", group = G2)
+shortC = input.color(#F23645, "Short", inline = "c", group = G2)
+txtSzS = input.string("normal", "Мәтін өлшемі", options = ["tiny", "small", "normal", "large"], group = G2, display = display.none)
+slC    = input.color(#F23645, "Stop", group = G2)
+slBuf  = input.int(0, "Стоп буфері (тик)", minval = 0, maxval = 1000, tooltip = "Стопты манипуляция свечасының шетінен қанша тик әрі қою керек. 0 = дәл свечаның шетінде.", group = G2, display = display.none)
+tpExt  = input.int(2, "TP сызықтарын созу (бар)", minval = 0, maxval = 50, group = G2, display = display.none)
+
+txtSz = switch txtSzS
+    "tiny"  => size.tiny
+    "small" => size.small
+    "large" => size.large
+    => size.normal
+
+frN = frLen == 7 ? 3 : frLen == 5 ? 2 : 1
+
+tf  = timeframe.period
+sel = (tf == "1" and tM1) or (tf == "3" and tM3) or (tf == "5" and tM5) or (tf == "10" and tM10) or (tf == "12" and tM12) or (tf == "15" and tM15) or (tf == "20" and tM20) or (tf == "30" and tM30) or (tf == "45" and tM45) or (tf == "60" and tH1) or (tf == "120" and tH2) or (tf == "180" and tH3) or (tf == "240" and tH4) or ((tf == "D" or tf == "1D") and tD1) or ((tf == "W" or tf == "1W") and tW1) or ((tf == "M" or tf == "1M") and tMN)
+tfOk = tfMode == "Барлығы" or sel
+
+f_px(float v) =>
+    str.tostring(v, format.mintick)
+
+// ════════════════════════════════════════════════════════════════
+// CORE — фракталдар, sweep және setup есебі
+// ════════════════════════════════════════════════════════════════
+f_core() =>
+    var array<float> hiLvl = array.new<float>()
+    var array<int>   hiIdx = array.new<int>()
+    var array<int>   hiT   = array.new<int>()
+    var array<float> loLvl = array.new<float>()
+    var array<int>   loIdx = array.new<int>()
+    var array<int>   loT   = array.new<int>()
+
+    // Тым ескі фракталдарды тізімнен алып тастау
+    while array.size(hiIdx) > 0 and bar_index - array.get(hiIdx, 0) > frMaxAge
+        array.shift(hiLvl)
+        array.shift(hiIdx)
+        array.shift(hiT)
+    while array.size(loIdx) > 0 and bar_index - array.get(loIdx, 0) > frMaxAge
+        array.shift(loLvl)
+        array.shift(loIdx)
+        array.shift(loT)
+
+    // Осы свеча фрактал-хайды алып, астына жабылды ма?
+    float swHPx = na
+    int   swHT  = na
+    if array.size(hiLvl) > 0
+        for i = array.size(hiLvl) - 1 to 0
+            lvl = array.get(hiLvl, i)
+            if high > lvl
+                if close < lvl and na(swHPx)
+                    swHPx := lvl
+                    swHT  := array.get(hiT, i)
+                array.remove(hiLvl, i)
+                array.remove(hiIdx, i)
+                array.remove(hiT, i)
+
+    // Осы свеча фрактал-лоуды алып, үстіне жабылды ма?
+    float swLPx = na
+    int   swLT  = na
+    if array.size(loLvl) > 0
+        for i = array.size(loLvl) - 1 to 0
+            lvl = array.get(loLvl, i)
+            if low < lvl
+                if close > lvl and na(swLPx)
+                    swLPx := lvl
+                    swLT  := array.get(loT, i)
+                array.remove(loLvl, i)
+                array.remove(loIdx, i)
+                array.remove(loT, i)
+
+    fph = ta.pivothigh(high, frN, frN)
+    fpl = ta.pivotlow(low, frN, frN)
+    if not na(fph)
+        array.push(hiLvl, fph)
+        array.push(hiIdx, bar_index - frN)
+        array.push(hiT, time[frN])
+        if array.size(hiLvl) > 100
+            array.shift(hiLvl)
+            array.shift(hiIdx)
+            array.shift(hiT)
+    if not na(fpl)
+        array.push(loLvl, fpl)
+        array.push(loIdx, bar_index - frN)
+        array.push(loT, time[frN])
+        if array.size(loLvl) > 100
+            array.shift(loLvl)
+            array.shift(loIdx)
+            array.shift(loT)
+
+    // SETUP — осы свеча (2-свеча): фракталды + алдыңғы свечаны (1-свеча) алды
+    // Манипуляция тек бір жақта болуы керек:
+    // Short: 2-свеча 1-свечаның тек хайын алады, лоуын алмайды (low >= low[1])
+    // Long:  2-свеча 1-свечаның тек лоуын алады, хайын алмайды (high <= high[1])
+    shortSetup = showShort and not na(swHPx) and high > high[1] and low >= low[1] and (not insideClose or (close < high[1] and close > low[1]))
+    longSetup  = showLong  and not na(swLPx) and low < low[1]   and high <= high[1] and (not insideClose or (close > low[1] and close < high[1]))
+    // Бір свеча екі жақты да берсе (outside bar), сигнал болмайды
+    bothSides = shortSetup and longSetup
+    [shortSetup and not bothSides, longSetup and not bothSides, swHPx, swHT, swLPx, swLT, fph, fpl]
+
+// Сигнал жарамдылығы: стоп пен TP2 кіру бағасының дұрыс жағында болуы керек (гэп болса — сигнал жоқ) + RR сүзгісі
+f_okShort(float entry, float sl, float tp2) =>
+    sl > entry and tp2 < entry and (minRR <= 0 or (entry - tp2) >= minRR * (sl - entry))
+
+f_okLong(float entry, float sl, float tp2) =>
+    sl < entry and tp2 > entry and (minRR <= 0 or (tp2 - entry) >= minRR * (entry - sl))
+
+// ════════════════════════════════════════════════════════════════
+// ГРАФИК ТАЙМФРЕЙМІ — сызбалар
+// ════════════════════════════════════════════════════════════════
+[cS, cL, cSwH, cSwHT, cSwL, cSwLT, ph, pl] = f_core()
+
+plotshape(showFr and not na(ph), "Top Fractals",    shape.triangledown, location.abovebar, lineC, offset = -frN, size = size.tiny, display = display.pane)
+plotshape(showFr and not na(pl), "Bottom Fractals", shape.triangleup,   location.belowbar, lineC, offset = -frN, size = size.tiny, display = display.pane)
+
+pSwHPx  = cSwH[1]
+pSwHT   = cSwHT[1]
+pSwLPx  = cSwL[1]
+pSwLT   = cSwLT[1]
+c1High  = high[2]
+c1Low   = low[2]
+slShort = high[1] + slBuf * syminfo.mintick   // манипуляция свечасының хайының артында
+slLong  = low[1]  - slBuf * syminfo.mintick   // манипуляция свечасының лоуының артында
+mid     = (c1High + c1Low) / 2
+
+// 3-свеча ашылған кезде сигнал
+sigShort = tfOk and cS[1] and f_okShort(open, slShort, c1Low)
+sigLong  = tfOk and cL[1] and f_okLong(open, slLong, c1High)
+
+var array<line>  lns = array.new<line>()
+var array<label> lbs = array.new<label>()
+
+xC1  = bar_index - 2
+xC2  = bar_index - 1
+tC2  = time[1]
+xEnd = bar_index + tpExt
+
+if sigShort
+    array.push(lns, line.new(pSwHT, pSwHPx, tC2, pSwHPx, xloc = xloc.bar_time, color = lineC, width = 1))
+    array.push(lbs, label.new(int((pSwHT + tC2) / 2), pSwHPx, "SWEEP", xloc = xloc.bar_time, style = label.style_label_down, color = color(na), textcolor = lineC, size = txtSz))
+    array.push(lns, line.new(xC1, mid, xEnd, mid, color = lineC, width = 1))
+    array.push(lbs, label.new(xEnd, mid, "TP1  " + f_px(mid), style = label.style_label_down, color = color(na), textcolor = lineC, size = txtSz))
+    array.push(lns, line.new(xC1, c1Low, xEnd, c1Low, color = lineC, width = 1))
+    array.push(lbs, label.new(xEnd, c1Low, "TP2  " + f_px(c1Low), style = label.style_label_down, color = color(na), textcolor = lineC, size = txtSz))
+    array.push(lns, line.new(bar_index, open, xEnd, open, color = shortC, style = line.style_dotted, width = 1))
+    array.push(lbs, label.new(xEnd, open, "ENTRY  " + f_px(open), style = label.style_label_left, color = color(na), textcolor = shortC, size = txtSz))
+    array.push(lns, line.new(xC2, slShort, xEnd, slShort, color = slC, width = 1))
+    array.push(lbs, label.new(int((xC2 + xEnd) / 2), slShort, "STOP  " + f_px(slShort), style = label.style_label_up, color = color(na), textcolor = slC, size = txtSz))
+    array.push(lbs, label.new(bar_index, 0, "SELL", yloc = yloc.abovebar, style = label.style_label_down, color = shortC, textcolor = color.white, size = txtSz))
+
+if sigLong
+    array.push(lns, line.new(pSwLT, pSwLPx, tC2, pSwLPx, xloc = xloc.bar_time, color = lineC, width = 1))
+    array.push(lbs, label.new(int((pSwLT + tC2) / 2), pSwLPx, "SWEEP", xloc = xloc.bar_time, style = label.style_label_up, color = color(na), textcolor = lineC, size = txtSz))
+    array.push(lns, line.new(xC1, mid, xEnd, mid, color = lineC, width = 1))
+    array.push(lbs, label.new(xEnd, mid, "TP1  " + f_px(mid), style = label.style_label_up, color = color(na), textcolor = lineC, size = txtSz))
+    array.push(lns, line.new(xC1, c1High, xEnd, c1High, color = lineC, width = 1))
+    array.push(lbs, label.new(xEnd, c1High, "TP2  " + f_px(c1High), style = label.style_label_up, color = color(na), textcolor = lineC, size = txtSz))
+    array.push(lns, line.new(bar_index, open, xEnd, open, color = longC, style = line.style_dotted, width = 1))
+    array.push(lbs, label.new(xEnd, open, "ENTRY  " + f_px(open), style = label.style_label_left, color = color(na), textcolor = longC, size = txtSz))
+    array.push(lns, line.new(xC2, slLong, xEnd, slLong, color = slC, width = 1))
+    array.push(lbs, label.new(int((xC2 + xEnd) / 2), slLong, "STOP  " + f_px(slLong), style = label.style_label_down, color = color(na), textcolor = slC, size = txtSz))
+    array.push(lbs, label.new(bar_index, 0, "BUY", yloc = yloc.belowbar, style = label.style_label_up, color = longC, textcolor = color.white, size = txtSz))
+
+while array.size(lns) > hist * 5
+    line.delete(array.shift(lns))
+while array.size(lbs) > hist * 6
+    label.delete(array.shift(lbs))
+
+// Alert-тар (график таймфреймі)
+alertcondition(sigLong,  "Genesis Sweep LONG",  "Genesis Sweep: LONG {{ticker}} {{interval}}")
+alertcondition(sigShort, "Genesis Sweep SHORT", "Genesis Sweep: SHORT {{ticker}} {{interval}}")
