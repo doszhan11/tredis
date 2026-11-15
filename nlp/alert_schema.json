@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GENESIS ORDER FLOW alert",
+  "description": "JSON sent by the TradingView alert to the TREDIS server (webhook).",
+  "type": "object",
+  "required": [
+    "src",
+    "event",
+    "kind",
+    "symbol",
+    "sweep_tf",
+    "mss_tf",
+    "dir",
+    "level",
+    "stop",
+    "time"
+  ],
+  "properties": {
+    "src": {
+      "const": "GENESIS"
+    },
+    "event": {
+      "enum": [
+        "SWEEP",
+        "RAID",
+        "MSS"
+      ]
+    },
+    "kind": {
+      "enum": [
+        "Sweep",
+        "Raid"
+      ]
+    },
+    "symbol": {
+      "enum": [
+        "XAUUSD",
+        "XAUEUR",
+        "BTCUSD",
+        "XAGUSD",
+        "GBPUSD",
+        "EURUSD",
+        "GER40",
+        "AUDUSD",
+        "USDJPY",
+        "CADJPY"
+      ]
+    },
+    "sweep_tf": {
+      "enum": [
+        "1",
+        "3",
+        "5",
+        "15",
+        "30",
+        "60",
+        "240"
+      ],
+      "description": "Sweep timeframe in minutes"
+    },
+    "mss_tf": {
+      "enum": [
+        "1",
+        "3",
+        "5",
+        "15",
+        "30",
+        "60",
+        "240"
+      ],
+      "description": "MSS timeframe in minutes (equals the chart timeframe)"
+    },
+    "dir": {
+      "enum": [
+        "LONG",
+        "SHORT"
+      ]
+    },
+    "level": {
+      "type": "number",
+      "description": "Swept liquidity level"
+    },
+    "stop": {
+      "type": "number",
+      "description": "Extreme of the sweep candle"
+    },
+    "entry": {
+      "type": "number"
+    },
+    "tp1": {
+      "type": "number"
+    },
+    "tp2": {
+      "type": "number"
+    },
+    "tp3": {
+      "type": "number"
+    },
+    "tp4": {
+      "type": "number"
+    },
+    "mss_level": {
+      "type": "number",
+      "description": "Fractal level broken by the MSS"
+    },
+    "time": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}$"
+    }
+  },
+  "if": {
+    "properties": {
+      "event": {
+        "const": "MSS"
+      }
+    }
+  },
+  "then": {
+    "required": [
+      "entry",
+      "tp1",
+      "tp2",
+      "tp3",
+      "tp4",
+      "mss_level"
+    ]
+  }
+}

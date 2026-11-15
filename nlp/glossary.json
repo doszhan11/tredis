@@ -1,0 +1,52 @@
+{
+  "fractal": {
+    "kk": "Екі жағындағы N свечадан максимумы (минимумы) жоғары (төмен) свеча. N — «фрактал күші», әдепкі 1.",
+    "ru": "Свеча, у которой максимум (минимум) выше (ниже), чем у N свечей с каждой стороны. N — сила фрактала, по умолчанию 1.",
+    "en": "A candle whose high (low) is above (below) the N candles on each side. N is the fractal strength, default 1."
+  },
+  "liquidity": {
+    "kk": "Көп стоп-ордер күтілетін баға деңгейлері: фракталдардың максимумдары мен минимумдары.",
+    "ru": "Уровни цены, где ожидается много стоп-ордеров: максимумы и минимумы фракталов.",
+    "en": "Price levels where many stop orders are expected: the highs and lows of fractals."
+  },
+  "sweep": {
+    "kk": "Жоғары таймфреймдегі свеча ликвидность деңгейін фитильмен алады, ал денесі деңгейдің бастапқы жағында қалады.",
+    "ru": "Свеча старшего таймфрейма забирает уровень ликвидности тенью, а её тело остаётся по прежнюю сторону уровня.",
+    "en": "A higher-timeframe candle takes a liquidity level with its wick while its body stays on the original side of the level."
+  },
+  "raid": {
+    "kk": "Свеча деңгейден денесімен өтіп жабылады, келесі свеча кері қайтып жабылады: ликвидностьті жинаған жалған бұзу.",
+    "ru": "Свеча закрывается телом за уровнем, следующая разворачивается и закрывается обратно: ложный пробой, собравший ликвидность.",
+    "en": "A candle closes with its body beyond a level and the next candle reverses and closes back: a false breakout that took liquidity."
+  },
+  "mss": {
+    "kk": "Свип немесе Raid-тан кейін график таймфреймінде қарама-қарсы фракталды жабылу бұзады: бағыттың өзгергенін растайды.",
+    "ru": "После Sweep или Raid закрытие на таймфрейме графика за ближайшим противоположным фракталом: подтверждает смену направления.",
+    "en": "After a Sweep or Raid, a close on the chart timeframe beyond the nearest opposite fractal: it confirms the change of direction."
+  },
+  "stop": {
+    "kk": "Свип свечасының экстремумы.",
+    "ru": "Экстремум свечи свипа.",
+    "en": "The extreme of the sweep candle."
+  },
+  "entry": {
+    "kk": "MSS свечасы денесінің шеті.",
+    "ru": "Край тела свечи MSS.",
+    "en": "The body edge of the MSS candle."
+  },
+  "tp": {
+    "kk": "Stop–Entry қашықтығының Фибоначчи кеңеюі (1.618, 2.618, 3.618, 4.618), Stop-тан есептеледі.",
+    "ru": "Фибоначчи-расширения расстояния Stop–Entry (1.618, 2.618, 3.618, 4.618), откладываются от Stop.",
+    "en": "Fibonacci extensions of the Stop–Entry distance (1.618, 2.618, 3.618, 4.618), measured from the Stop."
+  },
+  "order_block": {
+    "kk": "Гэп қалдырған импульстен бұрынғы свеча: максимумынан минимумына дейінгі қорап.",
+    "ru": "Свеча перед импульсом, оставившим гэп: прямоугольник от максимума до минимума.",
+    "en": "The candle before an impulsive move that left a gap: a box from its high to its low."
+  },
+  "fvg": {
+    "kk": "1-ші және 3-ші свеча арасындағы, 2-ші свеча жаппаған саңылау.",
+    "ru": "Разрыв между 1-й и 3-й свечой, который 2-я свеча не закрыла.",
+    "en": "A gap between candle 1 and candle 3 that candle 2 did not fill."
+  }
+}
