@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TREDIS AI · концепт ассистента</title>
+<style>
+:root{
+  --bg:#F4F6F9; --surface:#FFFFFF; --ink:#16202B; --muted:#5B6776; --line:#DCE2EA; --accent:#1F6FEB; --accent-soft:#E6EFFD; --ok:#1E8E5A; --warn:#B26A00;
+  color-scheme: light;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0B0F14; --surface:#141B24; --ink:#E7ECF2; --muted:#9AA7B6; --line:#243041; --accent:#5AA2FF; --accent-soft:#16263B; --ok:#45C08A; --warn:#F0B44C; color-scheme: dark; } }
+:root[data-theme="dark"]{ --bg:#0B0F14; --surface:#141B24; --ink:#E7ECF2; --muted:#9AA7B6; --line:#243041; --accent:#5AA2FF; --accent-soft:#16263B; --ok:#45C08A; --warn:#F0B44C; color-scheme: dark; }
+html{ scroll-padding-top:env(safe-area-inset-top,0px); }
+*{ box-sizing:border-box; }
+body{ margin:0; background:var(--bg); color:var(--ink); font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif; line-height:1.45; }
+.wrap{ max-width:1180px; margin:0 auto; padding:24px 20px 40px; }
+header.top{ display:flex; flex-wrap:wrap; align-items:center; gap:14px 24px; margin-bottom:18px; }
+.brand{ font-weight:800; font-size:24px; letter-spacing:.3px; }
+.brand span{ color:var(--accent); }
+.tag{ font-size:13px; color:var(--warn); border:1px solid var(--warn); border-radius:99px; padding:3px 10px; }
+.sub{ color:var(--muted); font-size:15px; margin:0 0 18px; max-width:860px; }
+.controls{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:18px; }
+.seg{ display:flex; background:var(--surface); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.seg button{ border:0; background:transparent; color:var(--ink); padding:10px 14px; font:inherit; font-size:14px; cursor:pointer; }
+.seg button[aria-pressed="true"]{ background:var(--accent); color:#fff; }
+.btn{ border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:10px; padding:10px 16px; font:inherit; font-size:14px; cursor:pointer; }
+.btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+.grid{ display:grid; grid-template-columns: 420px 1fr; gap:28px; align-items:start; }
+@media (max-width:900px){ .grid{ grid-template-columns:1fr; } }
+
+/* phone */
+.phone{ background:#0E1621; border-radius:28px; padding:10px; box-shadow:0 18px 50px rgba(0,0,0,.25); border:1px solid #1d2a3a; }
+.tg-head{ display:flex; align-items:center; gap:10px; padding:10px 12px 12px; border-bottom:1px solid #1d2a3a; color:#fff; }
+.avatar{ width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,#2E7BEF,#7B5CFF); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; }
+.tg-title{ font-weight:600; font-size:15px; }
+.tg-status{ font-size:12px; color:#6D8BA8; }
+.lock{ margin-left:auto; font-size:11px; color:#9FC0E6; border:1px solid #2B4A6E; border-radius:99px; padding:2px 8px; }
+.chat{ height:620px; overflow-y:auto; padding:14px 10px; display:flex; flex-direction:column; gap:8px; scroll-behavior:smooth; }
+.msg{ max-width:88%; padding:8px 11px; border-radius:14px; font-size:14px; color:#E9EEF5; white-space:normal; animation:pop .25s ease-out; }
+@keyframes pop{ from{ opacity:0; transform:translateY(6px);} to{ opacity:1; transform:none; } }
+.msg.bot{ background:#182533; align-self:flex-start; border-bottom-left-radius:4px; }
+.msg.user{ background:#2B5278; align-self:flex-end; border-bottom-right-radius:4px; }
+.msg b{ color:#fff; }
+.msg .muted{ color:#8FA3B8; font-size:12px; }
+.kbd{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.kbd button{ flex:1 1 auto; background:#22344A; color:#BFD9F7; border:0; border-radius:8px; padding:7px 10px; font:inherit; font-size:13px; cursor:pointer; }
+.kbd button:hover{ background:#2A4260; }
+pre.code{ background:#0B111A; color:#C9E1FF; border-radius:8px; padding:8px 10px; font-size:11.5px; line-height:1.45; overflow-x:auto; margin:6px 0 0; font-family:Menlo,Consolas,monospace; }
+.stats{ display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin-top:6px; }
+.stat{ background:#0F1A27; border-radius:8px; padding:6px 8px; }
+.stat .v{ font-weight:700; font-size:16px; color:#fff; }
+.stat .k{ font-size:11px; color:#8FA3B8; }
+.up{ color:#5BD08F !important; } .down{ color:#FF8A80 !important; }
+ol.steps{ margin:6px 0 0 18px; padding:0; } ol.steps li{ margin:2px 0; }
+.typing{ align-self:flex-start; background:#182533; border-radius:14px; padding:10px 14px; display:flex; gap:4px; }
+.typing i{ width:6px; height:6px; border-radius:50%; background:#6D8BA8; animation:blink 1s infinite; }
+.typing i:nth-child(2){ animation-delay:.2s } .typing i:nth-child(3){ animation-delay:.4s }
+@keyframes blink{ 0%,80%,100%{ opacity:.3 } 40%{ opacity:1 } }
+.composer{ display:flex; gap:8px; padding:10px; border-top:1px solid #1d2a3a; }
+.composer div{ flex:1; background:#17212B; color:#6D8BA8; border-radius:18px; padding:9px 14px; font-size:13px; }
+
+/* side panel */
+.panel h2{ font-size:18px; margin:0 0 6px; }
+.panel p.lead{ color:var(--muted); margin:0 0 14px; font-size:14px; }
+.cards{ display:flex; flex-direction:column; gap:10px; }
+.card{ background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:14px 16px; opacity:.55; transition:all .25s; }
+.card.on{ opacity:1; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+.card.done{ opacity:.9; }
+.card .n{ display:inline-flex; width:24px; height:24px; border-radius:50%; background:var(--accent-soft); color:var(--accent); font-weight:700; font-size:13px; align-items:center; justify-content:center; margin-right:8px; }
+.card h3{ display:flex; align-items:center; font-size:15px; margin:0 0 4px; }
+.card p{ margin:0; color:var(--muted); font-size:13.5px; }
+.chips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.chip{ font-size:11.5px; border:1px solid var(--line); border-radius:99px; padding:2px 8px; color:var(--muted); }
+.note{ margin-top:18px; font-size:12.5px; color:var(--muted); border-left:3px solid var(--line); padding-left:10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">TREDIS <span>AI</span></div>
+    <div class="tag">Концепт · цифры в примерах демонстрационные</div>
+  </header>
+  <p class="sub">Закрытый Telegram-бот для подписчиков. Трейдер пишет идею обычным текстом, ассистент на базе Claude собирает индикатор или стратегию, проверяет на истории, объясняет, что исправить, и подключает к TradingView и автоторговле. Отдельно для каждого пользователя.</p>
+  <div class="controls">
+    <div class="seg" role="group" aria-label="Сценарий">
+      <button id="s1" aria-pressed="true">1 · Индикатор из текста</button>
+      <button id="s2" aria-pressed="false">2 · Стратегия → автоторговля</button>
+    </div>
+    <button class="btn primary" id="next">Далее ▶</button>
+    <button class="btn" id="auto">Авто</button>
+    <button class="btn" id="reset">Сначала</button>
+  </div>
+  <div class="grid">
+    <div class="phone">
+      <div class="tg-head"><div class="avatar">T</div><div><div class="tg-title">TREDIS AI</div><div class="tg-status" id="status">бот</div></div><div class="lock">🔒 по подписке</div></div>
+      <div class="chat" id="chat"></div>
+      <div class="composer"><div>Напишите идею индикатора или стратегии…</div></div>
+    </div>
+    <div class="panel">
+      <h2>Что происходит под капотом</h2>
+      <p class="lead">Каждый шаг в чате подсвечивает модуль системы.</p>
+      <div class="cards" id="cards"></div>
+      <div class="note">TradingView не даёт ботам ставить скрипты на чужой график, поэтому TREDIS публикует индикатор в своём аккаунте (invite-only), открывает доступ по нику пользователя и сам считает сигналы на своём сервере. Автоторговля включается только после проверки на истории, с лимитами риска и согласием пользователя. Это не инвестиционная рекомендация.</div>
+    </div>
+  </div>
+</div>
+<script>
+var PANELS = {
+  s1: [
+    {t:"Понимание запроса (NLP)", d:"Claude извлекает из текста рынок, таймфрейм, событие и формат алерта. Если данных не хватает, бот задаёт один уточняющий вопрос.", c:["Claude API","намерение + параметры","RU · KZ · EN"]},
+    {t:"Генерация Pine Script", d:"Код пишется по шаблонам TREDIS (Pine v6) и проходит наши проверки перед выдачей пользователю.", c:["Pine Script v6","шаблоны TREDIS"]},
+    {t:"Бэктест на истории", d:"Движок TREDIS прогоняет индикатор по историческим данным рынка и считает сделки, win rate, profit factor и просадку.", c:["данные рынка через API","движок бэктеста"]},
+    {t:"AI-разбор и улучшение", d:"Claude читает отчёт, находит слабые места и предлагает правки. Изменения применяются только после подтверждения пользователя.", c:["объяснение","вопрос пользователю"]},
+    {t:"Подключение без настройки", d:"TREDIS публикует индикатор в своём аккаунте TradingView как invite-only, открывает доступ на ник пользователя, бот присылает ссылку. Сигналы считает сервер TREDIS сам, алерт создавать не нужно.", c:["invite-only ссылка","сервер TREDIS","график на сайте"]}
+  ],
+  s2: [
+    {t:"Понимание стратегии (NLP)", d:"Правила входа, стопа и тейка из текста превращаются в структуру стратегии.", c:["Claude API","правила → JSON"]},
+    {t:"Обязательный бэктест", d:"Перед автоторговлей стратегия проверяется на истории выбранного рынка.", c:["история рынка","метрики"]},
+    {t:"AI-разбор ошибок", d:"Ассистент показывает, где стратегия ошибается, и спрашивает разрешения исправить.", c:["диагностика","согласие"]},
+    {t:"Лимиты риска и согласие", d:"Риск на сделку, дневной лимит убытка, максимум позиций. Сначала демо-счёт.", c:["риск-менеджмент","демо"]},
+    {t:"Автоторговля", d:"Ордера идут на счёт самого пользователя (MT5 через PineConnector или API биржи). Кнопка СТОП останавливает всё.", c:["MT5 · PineConnector","API биржи","персонально"]}
+  ]
+};
+var CODE1 = '//@version=6\nindicator("TREDIS · Liquidity Sweep 15m", overlay=true)\nlen = input.int(2, "Фрактал: свечей с каждой стороны")\nph  = ta.pivothigh(high, len, len)\nvar float lastHigh = na\nif not na(ph)\n    lastHigh := ph\nsweep = not na(lastHigh) and high &gt; lastHigh and close &lt; lastHigh\nplotshape(sweep, "Sweep", shape.triangledown, location.abovebar, color.red)\nalertcondition(sweep, "Sweep", "Sweep XAUUSD 15m")';
+function stats(a){ return '<div class="stats">'+a.map(function(x){return '<div class="stat"><div class="v '+(x[2]||'')+'">'+x[0]+'</div><div class="k">'+x[1]+'</div></div>';}).join('')+'</div>'; }
+var SC = {
+ s1: [
+  {who:"user", p:0, h:"Нужен индикатор: показывай, где цена снимает ликвидность за последним максимумом и закрывается обратно. Золото, 15 минут. И присылай алерт сюда."},
+  {who:"bot", p:0, h:"Понял: <b>XAUUSD · 15m · Sweep максимума</b> с алертом в Telegram.<br>Уточню одно: какой максимум считать?", k:["Фрактал, 2 свечи","Максимум сессии"]},
+  {who:"user", p:0, h:"Фрактал, 2 свечи"},
+  {who:"bot", p:1, h:"Готово ✅ <b>TREDIS · Liquidity Sweep 15m</b> (Pine Script v6)<pre class=\"code\">"+CODE1+"</pre>", k:["Проверить на истории","Как добавить в TradingView"]},
+  {who:"user", p:2, h:"Проверить на истории"},
+  {who:"bot", p:2, h:"Проверил на <b>XAUUSD 15m за 12 месяцев</b>:"+stats([["214","сигналов"],["41%","win rate"],["1.12","profit factor"],["9.8%","макс. просадка"]])+"<div class=\"muted\" style=\"margin-top:6px\">демо-данные</div>"},
+  {who:"bot", p:3, h:"Нашёл слабые места:<ol class=\"steps\"><li>63% убыточных сигналов в азиатскую сессию (00:00–07:00 Алматы).</li><li>Стоп слишком близко: часть сделок выбивает до движения.</li></ol>Предлагаю: фильтр сессий и стоп за экстремум свипа. Пересчитать?", k:["Применить и пересчитать","Оставить как есть"]},
+  {who:"user", p:3, h:"Применить и пересчитать"},
+  {who:"bot", p:3, h:"После правок:"+stats([["131","сигналов"],["52%","win rate","up"],["1.48","profit factor","up"],["6.1%","макс. просадка","up"]])+"<div class=\"muted\" style=\"margin-top:6px\">Прошлые результаты не гарантируют будущих.</div>", k:["Как добавить в TradingView"]},
+  {who:"user", p:4, h:"Подключи к TradingView"},
+  {who:"bot", p:4, h:"Готово, ничего настраивать не нужно ✅<ol class=\"steps\"><li>Индикатор опубликован в аккаунте TREDIS (invite-only), доступ открыт для вашего ника <b>@trader_kz</b>.</li><li>Откройте ссылку → <b>Add to chart</b>:<br><span class=\"muted\">tradingview.com/script/••••</span></li><li>Сигналы считает сервер TREDIS и присылает сюда, алерт создавать не нужно.</li></ol>Или сразу график с индикатором на нашем сайте.", k:["Открыть в TradingView","График на tradeacademy.world"]}
+ ],
+ s2: [
+  {who:"user", p:0, h:"Стратегия: лонг после Sweep минимума на 60 минутах и MSS на 3 минутах. Стоп за минимумом свипа, тейк 2R. Хочу автоторговлю."},
+  {who:"bot", p:0, h:"Разобрал правила:<ol class=\"steps\"><li>Вход: Sweep минимума (60m) → MSS вверх (3m)</li><li>Стоп: минимум свипа</li><li>Тейк: 2R</li></ol>Перед автоторговлей проверю на истории. Какой рынок?", k:["XAUUSD","BTCUSD","EURUSD"]},
+  {who:"user", p:1, h:"XAUUSD"},
+  {who:"bot", p:1, h:"Бэктест <b>XAUUSD · 12 месяцев</b>:"+stats([["96","сделок"],["47%","win rate"],["1.21","profit factor"],["11.4%","макс. просадка","down"]])+"<div class=\"muted\" style=\"margin-top:6px\">демо-данные</div>"},
+  {who:"bot", p:2, h:"Где стратегия ошибается:<ol class=\"steps\"><li>В 7% сделок MSS берётся по дальнему фракталу, и вход опаздывает.</li><li>За 5 минут до новостей США просадка выше в 2 раза.</li></ol>Исправить: MSS по ближайшему левому фракталу свечи свипа и пауза перед новостями?", k:["Да, исправить","Нет"]},
+  {who:"user", p:2, h:"Да, исправить"},
+  {who:"bot", p:2, h:"После исправлений:"+stats([["88","сделок"],["55%","win rate","up"],["1.63","profit factor","up"],["7.2%","макс. просадка","up"]])},
+  {who:"bot", p:3, h:"Перед автоторговлей подтвердите лимиты:<ol class=\"steps\"><li>Риск на сделку: <b>1%</b></li><li>Дневной лимит убытка: <b>3%</b></li><li>Максимум позиций: <b>2</b></li><li>Первые 2 недели: <b>демо-счёт</b></li></ol>", k:["Подтверждаю","Изменить лимиты"]},
+  {who:"user", p:3, h:"Подтверждаю"},
+  {who:"bot", p:4, h:"🟢 Автоторговля включена на <b>демо-счёте MT5</b> (через PineConnector).<br>Ордера только на вашем счёте, по вашей стратегии.<div class=\"muted\" style=\"margin-top:6px\">Вы получите отчёт после каждой сделки.</div>", k:["⏹ СТОП","Отчёт за день"]}
+ ]
+};
+var cur = "s1", idx = 0, timer = null, busy = false;
+var chat = document.getElementById("chat"), cards = document.getElementById("cards"), statusEl = document.getElementById("status");
+function renderCards(){
+  cards.innerHTML = PANELS[cur].map(function(p,i){ return '<div class="card" id="c'+i+'"><h3><span class="n">'+(i+1)+'</span>'+p.t+'</h3><p>'+p.d+'</p><div class="chips">'+p.c.map(function(x){return '<span class="chip">'+x+'</span>';}).join('')+'</div></div>'; }).join('');
+}
+function mark(p){
+  for (var i=0;i<PANELS[cur].length;i++){ var el=document.getElementById("c"+i); el.className = "card" + (i<p ? " done" : (i===p ? " on" : "")); }
+}
+function addMsg(m){
+  var d = document.createElement("div"); d.className = "msg " + m.who; d.innerHTML = m.h;
+  if (m.k){ var kb = document.createElement("div"); kb.className = "kbd"; m.k.forEach(function(t){ var b=document.createElement("button"); b.textContent=t; b.onclick=function(){ next(); }; kb.appendChild(b); }); d.appendChild(kb); }
+  chat.appendChild(d); chat.scrollTop = chat.scrollHeight; mark(m.p);
+}
+function next(){
+  if (busy) return; var list = SC[cur]; if (idx >= list.length) { stopAuto(); return; }
+  var m = list[idx++];
+  if (m.who === "bot"){
+    busy = true; statusEl.textContent = "печатает…";
+    var t = document.createElement("div"); t.className = "typing"; t.innerHTML = "<i></i><i></i><i></i>"; chat.appendChild(t); chat.scrollTop = chat.scrollHeight;
+    setTimeout(function(){ t.remove(); addMsg(m); statusEl.textContent = "бот"; busy = false; }, 650);
+  } else { addMsg(m); }
+}
+function reset(){ stopAuto(); idx = 0; chat.innerHTML = ""; renderCards(); mark(-1); }
+function stopAuto(){ if (timer){ clearInterval(timer); timer = null; document.getElementById("auto").textContent = "Авто"; } }
+function setScenario(s){ cur = s; document.getElementById("s1").setAttribute("aria-pressed", s==="s1"); document.getElementById("s2").setAttribute("aria-pressed", s==="s2"); reset(); next(); }
+document.getElementById("next").onclick = next;
+document.getElementById("reset").onclick = function(){ reset(); next(); };
+document.getElementById("auto").onclick = function(){ if (timer){ stopAuto(); } else { this.textContent = "Пауза"; next(); timer = setInterval(next, 1900); } };
+document.getElementById("s1").onclick = function(){ setScenario("s1"); };
+document.getElementById("s2").onclick = function(){ setScenario("s2"); };
+window.__show = function(s, n){ cur = s; reset(); for (var i=0;i<n;i++){ var m = SC[cur][idx++]; if (m) addMsg(m); } };
+setScenario("s1");
+</script>
+</body>
+</html>
