@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TREDIS — торговые сигналы в Telegram, индикаторы TradingView и обучение трейдингу</title>
+<meta name="description" content="TREDIS: Telegram-бот с торговыми сигналами, индикаторы TradingView и платформа обучения для трейдеров. Оповещения с уровнями входа, стопа и тейков без часов у графика.">
+<link rel="canonical" href="https://tredis.kbtu.us/ru/tredis-signaly-dlya-trejderov-telegram.html">
+<link rel="alternate" hreflang="ru" href="https://tredis.kbtu.us/ru/tredis-signaly-dlya-trejderov-telegram.html">
+<link rel="alternate" hreflang="en" href="https://tredis.kbtu.us/en/tredis-trading-signals-telegram-bot.html">
+<link rel="alternate" hreflang="x-default" href="https://tredis.kbtu.us/ru/tredis-signaly-dlya-trejderov-telegram.html">
+<link rel="icon" href="../assets/favicon.ico" sizes="any">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#1F3A5F">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="TREDIS">
+<meta property="og:title" content="TREDIS — торговые сигналы в Telegram, индикаторы TradingView и обучение трейдингу">
+<meta property="og:description" content="TREDIS: Telegram-бот с торговыми сигналами, индикаторы TradingView и платформа обучения для трейдеров. Оповещения с уровнями входа, стопа и тейков без часов у графика.">
+<meta property="og:url" content="https://tredis.kbtu.us/ru/tredis-signaly-dlya-trejderov-telegram.html">
+<meta property="og:image" content="https://tredis.kbtu.us/assets/og-cover.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta property="og:locale" content="ru_RU">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="TREDIS — торговые сигналы в Telegram, индикаторы TradingView и обучение трейдингу">
+<meta name="twitter:description" content="TREDIS: Telegram-бот с торговыми сигналами, индикаторы TradingView и платформа обучения для трейдеров. Оповещения с уровнями входа, стопа и тейков без часов у графика.">
+<meta name="twitter:image" content="https://tredis.kbtu.us/assets/og-cover.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+:root{--navy:#1F3A5F;--ink:#1F2933;--muted:#52606D;--bg:#FAFAF8;--tint:#EEF2F7;--line:#D5DAE0;--white:#fff}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.6;font-size:17px}
+img{max-width:100%;display:block}a{color:var(--navy)}
+.skip{position:absolute;left:-999px}.skip:focus{left:8px;top:8px;background:#fff;padding:8px;z-index:99}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+header{position:sticky;top:0;z-index:20;background:rgba(250,250,248,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;gap:20px;height:64px}
+.logo{font-weight:800;font-size:22px;letter-spacing:.5px;color:var(--navy);text-decoration:none}
+nav.menu{display:flex;gap:22px;margin-left:12px}nav.menu a{color:var(--muted);text-decoration:none;font-size:15px}nav.menu a:hover{color:var(--navy)}
+.sp{flex:1}.lang{font-size:14px;color:var(--muted)}.lang a{text-decoration:none;font-weight:600}
+.btn{display:inline-block;background:var(--navy);color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600;border:2px solid var(--navy);cursor:pointer;font:inherit;font-weight:600}
+.btn:hover{background:#16304f}.btn.alt{background:transparent;color:var(--navy)}.btn.alt:hover{background:var(--tint)}
+.btn.sm{padding:8px 16px;font-size:15px}
+.hero{padding:64px 0 56px}.hero .wrap{display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center}
+.eyebrow{font-size:14px;font-weight:700;letter-spacing:1.2px;color:var(--muted);text-transform:uppercase}
+h1{font-size:50px;line-height:1.1;margin:12px 0 18px;color:var(--navy);letter-spacing:-.5px}
+.lead{font-size:20px;color:var(--ink);max-width:620px}
+.cta{display:flex;flex-wrap:wrap;gap:12px;margin:26px 0 12px}.micro{font-size:14px;color:var(--muted)}
+.alertcard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;max-width:340px;margin:0 auto;box-shadow:0 8px 30px rgba(31,58,95,.12)}
+.alertcard img{border-radius:8px;width:100%;height:520px;object-fit:cover;object-position:top}.alertcard p{font-size:13px;color:var(--muted);margin:10px 4px 2px}
+section{padding:64px 0}section.tint{background:var(--tint)}
+h2{font-size:34px;line-height:1.2;margin:8px 0 14px;color:var(--navy);letter-spacing:-.3px}
+.sub{color:var(--muted);max-width:700px;margin:0 0 32px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:24px}
+.card h3{margin:0 0 8px;font-size:20px;color:var(--navy)}.card p{margin:0;color:var(--muted);font-size:16px}
+.num{font-size:14px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:8px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0}.chip{border:1px solid var(--line);background:#fff;border-radius:99px;padding:4px 12px;font-size:14px;color:var(--ink)}
+.soon{display:inline-block;font-size:12px;font-weight:700;color:#7a5a00;background:#fff1cc;border-radius:99px;padding:2px 10px;margin-bottom:8px}
+.stats{display:flex;flex-wrap:wrap;gap:40px;margin-top:8px}.stats b{display:block;font-size:40px;color:var(--navy);line-height:1.1}.stats span{color:var(--muted);font-size:15px}
+.text{max-width:780px}.text p{margin:0 0 16px}.disc{font-size:15px;color:var(--muted);border-left:4px solid var(--line);padding-left:14px}
+.media{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:24px 0}
+.ph{background:#fff;border:1px dashed #9aa6b5;border-radius:12px;min-height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--muted)}
+.ph b{color:var(--ink)}
+.team{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}.team .card{padding:0;overflow:hidden}.team img{width:100%;aspect-ratio:5/6;object-fit:cover}
+.team .info{padding:18px 20px}.team h3{margin:0;font-size:20px;color:var(--navy)}.team p{margin:4px 0 0;color:var(--muted);font-size:15px}
+details{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin-bottom:10px}
+summary{cursor:pointer;font-weight:600;color:var(--navy)}details p{margin:10px 0 0;color:var(--muted)}
+form{background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px;max-width:560px}
+label{display:block;font-size:14px;font-weight:600;margin:14px 0 4px}
+input[type=text],input[type=tel],input[type=email],select{width:100%;padding:11px 12px;border:1px solid #b9c2cd;border-radius:8px;font:inherit;background:#fff}
+.radios{display:flex;gap:18px;margin-top:6px}.radios label,.consent{font-weight:400;display:flex;gap:8px;align-items:flex-start;margin:6px 0}
+.consent{font-size:14px;color:var(--muted);margin-top:16px}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start}
+.share{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}.share a,.share button{border:1px solid var(--line);background:#fff;color:var(--ink);padding:8px 14px;border-radius:8px;text-decoration:none;font-size:15px;cursor:pointer;font-family:inherit}
+footer{background:var(--navy);color:#dce4ee;padding:48px 0 32px;font-size:15px}footer a{color:#fff}
+footer .cols{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:32px}footer h4{margin:0 0 10px;color:#fff;font-size:16px}
+footer .copy{margin-top:32px;border-top:1px solid rgba(255,255,255,.18);padding-top:18px;font-size:13px;color:#aebfd6}
+@media(max-width:900px){.hero .wrap,.split{grid-template-columns:1fr}h1{font-size:38px}.grid3,.grid4,.team,.media,footer .cols{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}nav.menu{display:none}h2{font-size:28px}.stats{gap:24px}}
+@media(max-width:520px){.btn.sm{display:none}.hero{padding-top:36px}.lead{font-size:18px}}
+</style>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"TREDIS","url":"https://tredis.kbtu.us","inLanguage":"ru"}</script>
+<script>
+/* Yandex Metrika: put your counter number here (metrika.yandex.ru), e.g. var YM_ID = 12345678; */
+var YM_ID = 0;
+if (YM_ID) {
+  (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window,document,'script','https://mc.yandex.ru/metrika/tag.js','ym');
+  ym(YM_ID,'init',{clickmap:true,trackLinks:true,accurateTrackBounce:true});
+}
+function goal(n){ if (YM_ID && window.ym) ym(YM_ID,'reachGoal',n); }
+</script>
+</head>
+<body>
+<a class="skip" href="#main">Перейти к содержанию</a>
+<header><div class="wrap bar">
+<a class="logo" href="#top">TREDIS</a>
+<nav class="menu" aria-label="Main"><a href="#how">Как работает</a><a href="#features">Возможности</a><a href="#who">Для кого</a><a href="#team">Команда</a></nav><div class="sp"></div>
+<div class="lang"><b>RU</b> / <a href="../en/tredis-trading-signals-telegram-bot.html" hreflang="en">EN</a></div>
+<a class="btn sm" href="https://t.me/YOUR_BOT_USERNAME" onclick="goal('cta_top')">Попробовать в Telegram</a>
+</div></header>
+<main id="main">
+<section class="hero" id="top"><div class="wrap">
+<div>
+<div class="eyebrow">Платформа для трейдеров</div>
+<h1>Торговые сигналы в Telegram. Без часов у графика.</h1>
+<p class="lead">TREDIS следит за рынками и присылает оповещение, когда сложился сценарий: направление сделки, вход, стоп и цели. Индикаторы на TradingView, Telegram-бот и платформа обучения в одном месте.</p>
+<div class="cta"><a class="btn" href="https://t.me/YOUR_BOT_USERNAME" onclick="goal('cta_hero')">Попробовать в Telegram</a><a class="btn alt" href="https://tradeacademy.world" onclick="goal('cta_site')">Платформа обучения</a></div>
+<div class="micro">10 рынков · оповещения в Telegram · ранний доступ</div>
+</div>
+<div class="alertcard"><img src="../img/alert.png" alt="Оповещение BTCUSD LONG в Telegram: Sweep 3m, MSS 3m, уровни Entry, Stop и TP" width="650" height="1244"><p>Реальное оповещение из нашего бота. Схема на картинке примерная, точные уровни приходят текстом.</p></div>
+</div></section>
+
+<section class="tint"><div class="wrap">
+<div class="eyebrow">Знакомое чувство?</div><h2>Рынок двигается, пока вы заняты</h2><p class="sub">Трейдеры тратят часы на графики и всё равно пропускают точки входа. Мы убираем эту рутину.</p>
+<div class="grid3"><div class="card"><div class="num">01</div><h3>Пропустили вход на работе</h3><p>Когда вы открываете график, импульс уже прошёл, а вход потерян.</p></div><div class="card"><div class="num">02</div><h3>Десятки графиков одновременно</h3><p>Следить за золотом, биткоином и валютными парами сразу тяжело, глаз замыливается.</p></div><div class="card"><div class="num">03</div><h3>Сигналы без объяснений</h3><p>Каналы присылают «покупай» без логики. Непонятно, откуда стоп и где цели.</p></div></div>
+</div></section>
+
+<section id="how"><div class="wrap">
+<div class="eyebrow">Как работает</div><h2>Три шага от рынка до оповещения</h2>
+<div class="grid3" style="margin-top:24px"><div class="card"><div class="num">01</div><h3>Выберите рынки</h3><p>Сейчас доступны 10 рынков: золото, серебро, биткоин, основные валютные пары и индекс GER40.</p></div><div class="card"><div class="num">02</div><h3>Бот следит за графиком</h3><p>Данные приходят из TradingView. Бот ищет сценарии вроде Sweep и MSS на выбранных таймфреймах.</p></div><div class="card"><div class="num">03</div><h3>Получите оповещение</h3><p>Направление, уровни Entry, Stop и TP 1–4, пояснение текстом и ссылка на график.</p></div></div>
+<p style="margin:28px 0 0"><b>Доступные рынки:</b></p><div class="chips"><span class="chip">XAUUSD</span><span class="chip">XAUEUR</span><span class="chip">BTCUSD</span><span class="chip">XAGUSD</span><span class="chip">GBPUSD</span><span class="chip">EURUSD</span><span class="chip">GER40</span><span class="chip">AUDUSD</span><span class="chip">USDJPY</span><span class="chip">CADJPY</span></div>
+<div class="stats" style="margin-top:36px"><div><b>10</b><span>рынков в боте</span></div><div><b>2</b><span>индикатора на TradingView</span></div><div><b>12</b><span>первых пользователей</span></div></div>
+</div></section>
+
+<section class="tint" id="features"><div class="wrap">
+<div class="eyebrow">Возможности</div><h2>Уже работает</h2><p class="sub">Всё, что описано в этом блоке, доступно сейчас.</p>
+<div class="grid2"><div class="card"><h3>Индикаторы на TradingView</h3><p>GENESIS ORDER FLOW показывает, где копится ликвидность, где её собирают и когда меняется направление цены. Доступ по приглашению.</p></div><div class="card"><h3>Telegram-бот</h3><p>Оповещения по вашим рынкам прямо в мессенджере. Ничего устанавливать не нужно.</p></div><div class="card"><h3>Платформа обучения</h3><p>tradeacademy.world: потоки, видеоуроки, статьи и комментарии для студентов.</p></div><div class="card"><h3>Защита авторов</h3><p>Контроль устройств и входов, водяной знак с логином на видео, блокировка и смена пароля из админки.</p></div></div>
+<h2 style="margin-top:48px">В разработке</h2>
+<div class="grid2" style="margin-top:20px"><div class="card"><span class="soon">В планах</span><h3>AI-ассистент в Telegram</h3><p>Пишете идею стратегии или индикатора обычным текстом, получаете готовый индикатор или оповещение.</p></div><div class="card"><span class="soon">В планах</span><h3>Проверка стратегий на истории</h3><p>Диагностика по прошлым данным и советы по улучшению.</p></div><div class="card"><span class="soon">В планах</span><h3>Продажа и защита авторских работ</h3><p>Авторы продают стратегии, индикаторы и курсы, а доступ получают только те, кого они разрешили.</p></div><div class="card"><span class="soon">В планах</span><h3>Автоторговля</h3><p>Только с вашего согласия и с лимитами, по алгоритму, который задаёте вы сами.</p></div></div>
+</div></section>
+
+<section id="who"><div class="wrap">
+<div class="eyebrow">Для кого</div><h2>Тем, у кого рынок не должен отнимать весь день</h2>
+<div class="grid4" style="margin-top:24px"><div class="card"><h3>Активные трейдеры</h3><p>Золото, крипта, форекс: оповещения по своим рынкам вместо ручного мониторинга.</p></div><div class="card"><h3>Те, кто работает</h3><p>Днём офис или учёба, а сигнал приходит в Telegram.</p></div><div class="card"><h3>Авторы стратегий и курсов</h3><p>Безопасно делиться знаниями: доступ только для своих, контроль утечек.</p></div><div class="card"><h3>Новички</h3><p>Понятные сценарии с объяснением вместо сигналов вслепую.</p></div></div>
+</div></section>
+
+<section class="tint"><div class="wrap">
+<div class="eyebrow">Идея проекта</div><h2>Технологии следят за рынком. Трейдер принимает решения.</h2>
+<div class="text"><p>TREDIS — платформа и Telegram-бот для трейдеров, которая помогает не тратить время на постоянный мониторинг графиков. Вместо того чтобы вручную искать точки входа, трейдер получает торговые сигналы в Telegram: направление сделки, уровень входа, стоп-лосс и несколько целей (TP). Это удобно тем, кто торгует золото (XAUUSD), биткоин, форекс-пары и индекс GER40 и не может сидеть у монитора весь день.</p><p>В основе сигналов лежат индикаторы на TradingView. Например, GENESIS ORDER FLOW показывает ликвидность и действия «умных денег» (smart money), а сценарии Sweep и MSS (смена структуры рынка) помогают понять, когда цена действительно меняет направление. Данные рынков приходят через API, а оповещения TradingView передаются на наш сервер через webhook и превращаются в понятное сообщение телеграм-бота.</p><p>Кроме сигналов мы строим платформу для обучения трейдингу. Авторы создают потоки, выкладывают видеоуроки и статьи, а система защищает материалы: контролирует устройства, показывает водяной знак с логином и позволяет быстро заблокировать доступ. Так автор стратегии и обучающих курсов может безопасно зарабатывать на своих знаниях.</p><p>В планах — AI-ассистент в Telegram. Трейдер описывает стратегию или идею индикатора обычным текстом, а ассистент превращает её в индикатор или оповещение, проверяет стратегию на истории и предлагает улучшения. Дальше — защита авторских прав и продажа стратегий, индикаторов и курсов, а также автоторговля по правилам трейдера только с его согласия и с лимитами. Так автоматизация трейдинга становится доступной без знания Pine Script и программирования, а оповещения TradingView не нужно настраивать вручную.</p><p class="disc">TREDIS не является инвестиционной рекомендацией. Торговля на финансовых рынках связана с риском потери капитала. Сигналы и индикаторы — инструменты анализа, а не гарантия результата.</p></div>
+</div></section>
+
+<section id="team"><div class="wrap">
+<div class="eyebrow">Знакомство с проектом</div><h2>Презентация и команда</h2>
+<div class="media">
+<div class="ph"><b>Презентация проекта</b><span>Питч TREDIS на SlideShare появится здесь</span>
+<!-- SlideShare: replace this block with <iframe src="SLIDESHARE_EMBED_URL" width="100%" height="320" allowfullscreen></iframe> -->
+</div>
+<div class="ph"><b>Видео команды</b><span>Видео на YouTube с представлением команды появится здесь</span>
+<!-- YouTube: replace this block with <iframe src="https://www.youtube.com/embed/YOUTUBE_ID" width="100%" height="320" allowfullscreen></iframe> -->
+</div>
+</div>
+<h2 style="margin-top:36px">Команда TREDIS</h2>
+<div class="team"><div class="card"><img src="../img/dosjan.jpg" alt="Досжан Түймебаев" width="480" height="576"><div class="info"><h3>Досжан Түймебаев</h3><p><b>CEO, основатель</b></p><p>Продукт и развитие проекта</p></div></div><div class="card"><img src="../img/daniel.jpg" alt="Даниел Эрадильов" width="480" height="576"><div class="info"><h3>Даниел Эрадильов</h3><p><b>Со-основатель</b></p><p>Разработка и инфраструктура</p></div></div><div class="card"><img src="../img/nurbol.jpg" alt="Нұрбол Қален" width="480" height="576"><div class="info"><h3>Нұрбол Қален</h3><p><b>Трейдер</b></p><p>Торговые стратегии и рынок</p></div></div></div>
+</div></section>
+
+<section class="tint"><div class="wrap">
+<h2>Частые вопросы</h2><div class="text" style="margin-top:20px"><details><summary>Можно попробовать прямо сейчас?</summary><p>Да. Подключите Telegram-бота и выберите рынки. AI-ассистент, продажа стратегий и автоторговля ещё в разработке.</p></details><details><summary>Это инвестиционная рекомендация?</summary><p>Нет. Оповещения — инструмент анализа. Решение о сделке и ответственность за результат остаются за вами.</p></details><details><summary>Бот торгует за меня?</summary><p>Нет. Сейчас бот только присылает оповещения. Автоторговлю планируем позже, только с вашего согласия и с лимитами.</p></details><details><summary>Какие рынки доступны?</summary><p>XAUUSD, XAUEUR, BTCUSD, XAGUSD, GBPUSD, EURUSD, GER40, AUDUSD, USDJPY, CADJPY. Список будет расширяться.</p></details><details><summary>Сколько это стоит?</summary><p>Тарифы пока не объявлены. Мы собираем ранний доступ и обратную связь.</p></details><details><summary>Зачем вам мои контакты?</summary><p>Чтобы сообщить о запуске новых функций, пригласить на интервью и дать доступ к тестированию.</p></details></div>
+</div></section>
+
+<section id="signup"><div class="wrap split">
+<div>
+<div class="eyebrow">Начнём</div><h2>Получить ранний доступ</h2><p class="sub">Оставьте контакты. Расскажем о новых функциях и пригласим протестировать.</p>
+<p><a class="btn alt" href="https://forms.gle/YOUR_CUSTDEV_FORM" onclick="goal('survey')">Или пройдите короткий опрос</a></p>
+<h3 style="margin:36px 0 6px;color:var(--navy)">Знаете трейдера, которому это пригодится?</h3>
+<div class="share">
+<a href="https://t.me/share/url?url=https%3A%2F%2Ftredis.kbtu.us%2Fru%2Ftredis-signaly-dlya-trejderov-telegram.html&text=TREDIS%3A%20%D1%82%D0%BE%D1%80%D0%B3%D0%BE%D0%B2%D1%8B%D0%B5%20%D1%81%D0%B8%D0%B3%D0%BD%D0%B0%D0%BB%D1%8B%20%D0%B2%20Telegram" target="_blank" rel="noopener">Telegram</a>
+<a href="https://wa.me/?text=TREDIS%3A%20%D1%82%D0%BE%D1%80%D0%B3%D0%BE%D0%B2%D1%8B%D0%B5%20%D1%81%D0%B8%D0%B3%D0%BD%D0%B0%D0%BB%D1%8B%20%D0%B2%20Telegram%20https%3A%2F%2Ftredis.kbtu.us%2Fru%2Ftredis-signaly-dlya-trejderov-telegram.html" target="_blank" rel="noopener">WhatsApp</a>
+<a href="https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Ftredis.kbtu.us%2Fru%2Ftredis-signaly-dlya-trejderov-telegram.html" target="_blank" rel="noopener">Facebook</a>
+<a href="https://twitter.com/intent/tweet?url=https%3A%2F%2Ftredis.kbtu.us%2Fru%2Ftredis-signaly-dlya-trejderov-telegram.html&text=TREDIS%3A%20%D1%82%D0%BE%D1%80%D0%B3%D0%BE%D0%B2%D1%8B%D0%B5%20%D1%81%D0%B8%D0%B3%D0%BD%D0%B0%D0%BB%D1%8B%20%D0%B2%20Telegram" target="_blank" rel="noopener">X</a>
+<button type="button" id="copy" data-ok="Ссылка скопирована">Скопировать ссылку</button>
+</div>
+</div>
+<form name="early-access" method="POST" data-netlify="true" netlify-honeypot="bot-field" onsubmit="goal('lead')">
+<input type="hidden" name="form-name" value="early-access"><input type="hidden" name="lang" value="ru">
+<p hidden><label>Don't fill this: <input name="bot-field"></label></p>
+<label for="n">Ваше имя</label><input id="n" name="name" type="text" required autocomplete="name">
+<label for="p">Телефон</label><input id="p" name="phone" type="tel" autocomplete="tel">
+<label for="e">Email</label><input id="e" name="email" type="email" required autocomplete="email">
+<label>Каким устройством пользуетесь?</label>
+<div class="radios"><label><input type="radio" name="device" value="iOS"> iOS</label><label><input type="radio" name="device" value="Android"> Android</label><label><input type="radio" name="device" value="Other"> Другое</label></div>
+<label class="consent"><input type="checkbox" name="consent" required> <span>Согласен на обработку контактов для связи о раннем доступе.</span></label>
+<p style="margin:18px 0 0"><button class="btn" type="submit">Получить ранний доступ</button></p>
+<details style="margin-top:18px"><summary>Какие данные мы собираем</summary><p>Форма сохраняет имя, телефон, email и тип устройства. Данные нужны только для связи о раннем доступе и интервью. Платёжные данные не запрашиваются. Для вопросов об удалении контактов напишите на email из раздела «Контакты».</p></details>
+</form>
+</div></section>
+</main>
+<footer><div class="wrap">
+<div class="cols">
+<div><a class="logo" style="color:#fff" href="#top">TREDIS</a><p>Торговые сигналы, индикаторы и обучение для трейдеров.</p></div>
+<div><h4>Проект</h4><p><a href="#how">Как работает</a><br><a href="#features">Возможности</a><br><a href="#team">Команда</a><br><a href="https://tradeacademy.world">tradeacademy.world</a></p></div>
+<div><h4>Контакты</h4><p><a href="mailto:team@tredis.kbtu.us">team@tredis.kbtu.us</a><br><a href="tel:+77000000000">+7 000 000 00 00</a><br><a href="https://t.me/YOUR_BOT_USERNAME">Telegram</a></p></div>
+</div>
+<div class="copy">© 2026 TREDIS. Ранний доступ. Не является инвестиционной рекомендацией.</div>
+</div></footer>
+<script>
+document.getElementById('copy').addEventListener('click',function(){var b=this;var u=location.href;(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){var o=b.textContent;b.textContent=b.dataset.ok;setTimeout(function(){b.textContent=o},1800)}).catch(function(){prompt('',u)})});
+</script>
+</body>
+</html>
